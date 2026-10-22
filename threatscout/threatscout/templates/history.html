@@ -57,7 +57,13 @@
             </a>
           </td>
           <td><span class="tag">{{ s.ioc_type | upper }}</span></td>
-          <td><strong style="font-family:'JetBrains Mono',monospace; font-size:1.05rem;">{{ s.threat_score }}</strong>/100</td>
+          <td>
+            {% if s.risk_level == 'UNKNOWN' %}
+              —
+            {% else %}
+              <strong style="font-family:'JetBrains Mono',monospace; font-size:1.05rem;">{{ s.threat_score }}</strong>/100
+            {% endif %}
+          </td>
           <td>
             {% set r_lower = s.risk_level | lower %}
             {% if r_lower == 'critical' %}
@@ -68,8 +74,10 @@
               <span class="badge badge-medium"><i class="fa-solid fa-circle-exclamation"></i> ORTA</span>
             {% elif r_lower == 'low' %}
               <span class="badge badge-low"><i class="fa-solid fa-info"></i> DÜŞÜK</span>
+            {% elif r_lower == 'unknown' %}
+              <span class="badge badge-unknown"><i class="fa-solid fa-circle-question"></i> VERİ YOK</span>
             {% else %}
-              <span class="badge badge-clean"><i class="fa-solid fa-shield-check"></i> TEMİZ</span>
+              <span class="badge badge-clean"><i class="fa-solid fa-circle-check"></i> TEMİZ</span>
             {% endif %}
           </td>
           <td style="font-size:0.85rem; color:var(--text-muted);">{{ s.created_at }}</td>

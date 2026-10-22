@@ -23,7 +23,7 @@
       --card-border-hover: rgba(56, 189, 248, 0.45);
       --text: #f1f5f9;
       --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      --text-dim: #8190a5;
       --accent: #38bdf8;
       --accent-glow: rgba(56, 189, 248, 0.35);
       --accent-secondary: #818cf8;
@@ -435,6 +435,121 @@
       50% { opacity: 1; }
     }
 
+    /* ONBOARDING KUTUSU */
+    .guide-box {
+      background: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+
+    .guide-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      color: #fff;
+      font-size: 0.95rem;
+    }
+
+    .guide-content {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      gap: 1rem;
+      padding: 0 1.5rem 1.5rem;
+    }
+
+    .info-card {
+      background: rgba(9, 14, 26, 0.7);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+    }
+
+    .info-card-header {
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+
+    .info-card-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* HATA KUTUSU */
+    .error {
+      display: flex;
+      gap: 0.9rem;
+      align-items: flex-start;
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.2rem;
+      color: #fecdd3;
+    }
+
+    .error i {
+      color: var(--rose);
+      margin-top: 0.15rem;
+    }
+
+    .badge-unknown {
+      background: rgba(100, 116, 139, 0.18);
+      color: #cbd5e1;
+      border: 1px solid rgba(100, 116, 139, 0.45);
+    }
+
+    /* TELEFON VE DAR EKRANLAR */
+    @media (max-width: 720px) {
+      header {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+      }
+
+      nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        border-radius: var(--radius-sm);
+      }
+
+      nav a {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.7rem;
+      }
+
+      .nav-actions {
+        width: 100%;
+        justify-content: center;
+      }
+
+      main {
+        padding: 1.25rem 1rem 3rem;
+      }
+
+      .card {
+        padding: 1.1rem 1rem;
+      }
+
+      .card-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+    }
+
+    /* HAREKETI AZALT AYARI ACIKSA ANIMASYONLARI KAPAT */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
     /* FOOTER */
     footer {
       border-top: 1px solid var(--line);
@@ -466,7 +581,7 @@
 
     <nav>
       <a href="/" {% if request.url.path == "/" %}class="active"{% endif %}>
-        <i class="fa-solid fa-radar"></i> Tarama
+        <i class="fa-solid fa-satellite-dish"></i> Tarama
       </a>
       <a href="/history" {% if "/history" in request.url.path %}class="active"{% endif %}>
         <i class="fa-solid fa-clock-rotate-left"></i> Geçmiş
@@ -508,6 +623,11 @@
     (function() {
       const canvas = document.getElementById('cyber-canvas');
       if (!canvas) return;
+      // Hareket azaltma ayari aciksa arka plan animasyonunu hic baslatma
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        canvas.style.display = 'none';
+        return;
+      }
       const ctx = canvas.getContext('2d');
       let w, h, particles = [];
 
@@ -518,7 +638,7 @@
       window.addEventListener('resize', resize);
       resize();
 
-      const particleCount = Math.min(Math.floor(window.innerWidth / 22), 60);
+      const particleCount = Math.min(Math.floor(window.innerWidth / 30), 40);
 
       for (let i = 0; i < particleCount; i++) {
         particles.push({
@@ -570,5 +690,14 @@
     })();
   </script>
 
+  <script>
+    // htmx hata cevaplarini da ekrana basar (ornek: gecersiz IOC)
+    document.body.addEventListener('htmx:beforeSwap', function (evt) {
+      if (evt.detail.xhr.status >= 400) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+    });
+  </script>
 </body>
 </html>

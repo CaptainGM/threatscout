@@ -49,5 +49,9 @@ def render_pdf(report: EnrichmentReport) -> bytes:
     return bytes(pdf.output())
 
 
+# Helvetica yazi tipi Turkce harfleri tanimiyor, onlari benzerleriyle degistiriyoruz
+TR_CHARS = str.maketrans({"ş": "s", "Ş": "S", "ğ": "g", "Ğ": "G", "ı": "i", "İ": "I"})
+
+
 def _safe(text: str) -> str:
-    return str(text).encode("latin-1", "replace").decode("latin-1")
+    return str(text).translate(TR_CHARS).encode("latin-1", "replace").decode("latin-1")

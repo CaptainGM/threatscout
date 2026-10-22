@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.middleware.sessions import SessionMiddleware
@@ -25,6 +26,18 @@ templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 templates.env.globals["risk_colors"] = {k.value: v for k, v in RISK_COLORS.items()}
 templates.env.globals["auth_required"] = bool(settings.web_password)
 
+# Kaynaklarin adi ve kisa aciklamasi (ana sayfada gosterilir)
+PROVIDER_INFO = {
+    "virustotal": ("VirusTotal", "Dosya, URL ve domain için antivirüs motorları"),
+    "abuseipdb": ("AbuseIPDB", "IP adresi için şikayet geçmişi"),
+    "shodan": ("Shodan", "Açık portlar ve servisler"),
+    "otx": ("AlienVault OTX", "Topluluk tehdit raporları"),
+    "greynoise": ("GreyNoise", "İnternet tarama trafiği ve bilinen tarayıcılar"),
+    "urlhaus": ("URLhaus", "Zararlı bağlantı listesi"),
+    "misp": ("MISP", "Kendi MISP sunucunuz (isteğe bağlı)"),
+    "whois": ("WHOIS / RDAP", "Alan adı ve IP sahiplik bilgisi"),
+}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,7 +51,24 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ThreatScout", version="1.0.0", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=settings.app_secret, session_cookie="threatscout")
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+def rate_limited(request: Request, exc: RateLimitExceeded):
+    text = "Cok hizli istek gonderdiniz. Biraz bekleyip tekrar deneyin."
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": text}, status_code=429)
+    return HTMLResponse(f'<div class="error">{text}</div>', status_code=429)
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limited)
+
+
+@app.middleware("http")
+async def block_cross_site_posts(request: Request, call_next):
+    # Baska bir sitenin tarayicidan gonderdigi POST isteklerini engelle
+    origin = request.headers.get("origin")
+    if request.method == "POST" and origin:
+        if urlparse(origin).netloc != request.headers.get("host"):
+            return JSONResponse({"detail": "Bu istek bu siteden gelmiyor"}, status_code=403)
+    return await call_next(request)
 
 
 def _engine() -> ThreatScoutEngine:
@@ -56,7 +86,7 @@ def web_unlocked(request: Request) -> bool:
 def api_unlocked(request: Request) -> bool:
     if request.session.get("auth"):
         return True
-    key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+    key = request.headers.get("X-API-Key")
     if settings.app_api_key and key == settings.app_api_key.strip():
         return True
     if engine is None:
@@ -97,7 +127,10 @@ async def login_page(request: Request, error: str = ""):
 
 @app.post("/login")
 async def login(request: Request, password: str = Form(...)):
-    if settings.web_password and password != settings.web_password:
+    if not settings.web_password:
+        # Parola yoksa giris gerekmez; oturum da acilmaz
+        return RedirectResponse("/", status_code=302)
+    if password != settings.web_password:
         return templates.TemplateResponse(
             request, "login.html", {"error": "Hatali parola"}, status_code=401
         )
@@ -115,10 +148,14 @@ async def logout(request: Request):
 async def home(request: Request, _: None = Depends(require_web)):
     eng = _engine()
     scans = eng.store.list_scans(limit=8)
+    providers = []
+    for p in eng.providers:
+        label, desc = PROVIDER_INFO.get(p.name, (p.name, ""))
+        providers.append({"label": label, "desc": desc, "enabled": p.enabled})
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"scans": scans, "auth_required": bool(settings.web_password)},
+        {"scans": scans, "providers": providers, "auth_required": bool(settings.web_password)},
     )
 
 
@@ -280,6 +317,8 @@ async def delete_webhook(webhook_id: int, _: None = Depends(require_web)):
 @app.get("/api/v1/enrich/ip/{ip}")
 @limiter.limit(settings.rate_limit)
 async def enrich_ip(request: Request, ip: str, use_cache: bool = True, _: None = Depends(require_api)):
+    if detect_ioc_type(ip) != IOCType.IP:
+        raise HTTPException(400, "Gecersiz IP adresi")
     return (await _engine().enrich(ip, ioc_type=IOCType.IP, use_cache=use_cache)).to_dict()
 
 

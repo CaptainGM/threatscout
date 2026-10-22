@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 from abc import ABC, abstractmethod
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 
@@ -12,6 +12,14 @@ from threatscout.models import IOCType, ProviderResult
 
 def _skipped() -> dict[str, Any]:
     return {"skipped": True}
+
+
+def _http_message(code: int) -> str:
+    if code in (401, 403):
+        return f"Anahtar gecersiz ya da yetkisiz ({code})"
+    if code == 429:
+        return "Istek limiti doldu (429)"
+    return f"HTTP {code}"
 
 
 class BaseProvider(ABC):
@@ -39,7 +47,7 @@ class BaseProvider(ABC):
 
     async def analyze(self, ioc: str, ioc_type: IOCType) -> ProviderResult:
         if not self.enabled:
-            return ProviderResult(provider=self.name, success=False, error="API key yok")
+            return ProviderResult(provider=self.name, success=False, error="API anahtari eklenmemis")
         try:
             handlers = {
                 IOCType.IP: self.analyze_ip,
@@ -64,8 +72,10 @@ class BaseProvider(ABC):
             return ProviderResult(
                 provider=self.name,
                 success=False,
-                error=f"HTTP {exc.response.status_code}",
+                error=_http_message(exc.response.status_code),
             )
+        except httpx.TimeoutException:
+            return ProviderResult(provider=self.name, success=False, error="Zaman asimi, cevap gelmedi")
         except Exception as exc:
             return ProviderResult(provider=self.name, success=False, error=str(exc))
 
@@ -229,7 +239,7 @@ class OTXProvider(BaseProvider):
         return await self._get("domain", domain)
 
     async def analyze_url(self, url: str) -> dict[str, Any]:
-        return await self._get("url", url)
+        return await self._get("url", quote(url, safe=""))
 
     async def analyze_hash(self, file_hash: str) -> dict[str, Any]:
         return await self._get("file", file_hash)
@@ -297,11 +307,6 @@ class GreyNoiseProvider(BaseProvider):
 
 class URLhausProvider(BaseProvider):
     name = "urlhaus"
-    requires_key = False
-
-    def __init__(self, api_key: str | None = None, timeout: float = 15.0) -> None:
-        super().__init__(api_key, timeout)
-        self.enabled = True
 
     def _headers(self) -> dict[str, str]:
         if self.api_key:
@@ -454,10 +459,14 @@ class WhoisProvider(BaseProvider):
         nameservers = [
             ns.get("ldhName", "") for ns in (raw.get("nameservers") or []) if ns.get("ldhName")
         ]
-        country = ""
-        for loc in (raw.get("country"),) :
-            if loc:
-                country = str(loc)
+        created = next(
+            (
+                e.get("eventDate", "")[:10]
+                for e in raw.get("events") or []
+                if e.get("eventAction") == "registration"
+            ),
+            "",
+        )
         return {
             "handle": raw.get("handle", ""),
             "name": raw.get("name", "") or (vcard_names[0] if vcard_names else ""),
@@ -465,7 +474,8 @@ class WhoisProvider(BaseProvider):
             "status": raw.get("status") or [],
             "nameservers": nameservers,
             "emails": emails,
-            "country": country,
+            "country": str(raw.get("country") or ""),
+            "created": created,
             "mailbox_domain": raw.get("mailbox_domain", ""),
         }
 

@@ -32,6 +32,7 @@ class RiskLevel(str, Enum):
     MEDIUM = "MEDIUM"
     LOW = "LOW"
     CLEAN = "CLEAN"
+    UNKNOWN = "UNKNOWN"
 
 
 class ProviderResult(BaseModel):
@@ -97,4 +98,4 @@ def detect_ioc_type(value: str) -> IOCType:
 
 
 def cache_key(ioc: str, provider: str) -> str:
-    return hashlib.sha256(f"{provider}:{ioc.strip().lower()}".encode()).hexdigest()
+    return hashlib.sha256(f"{provider}:{ioc.strip()}".encode()).hexdigest()

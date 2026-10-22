@@ -109,9 +109,11 @@ def test_api_keys_and_history(tmp_path):
     assert store.get_scan(scan_id)["ioc"] == "8.8.8.8"
 
 
-def test_health_open():
-    from threatscout.api import app
-    with TestClient(app) as client:
-        assert client.get("/health").json()["status"] == "ok"
-        assert client.get("/api/v1/history").status_code == 401
-        assert client.get("/").status_code == 200
+def test_health_open(make_engine, monkeypatch):
+    from threatscout import api
+
+    monkeypatch.setattr(api, "engine", make_engine())
+    client = TestClient(api.app)
+    assert client.get("/health").json()["status"] == "ok"
+    assert client.get("/api/v1/history").status_code == 401
+    assert client.get("/").status_code == 200

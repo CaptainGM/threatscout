@@ -138,7 +138,7 @@
       </div>
     </div>
     <div class="badge">
-      {{ report.threat_score }} / 100 — {{ report.risk_level.value | upper }}
+      {% if report.risk_level.value == 'UNKNOWN' %}YETERSİZ VERİ{% else %}{{ report.threat_score }} / 100 — {{ report.risk_level.value | upper }}{% endif %}
     </div>
   </div>
 

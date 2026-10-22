@@ -15,6 +15,7 @@ RISK_COLORS = {
     RiskLevel.MEDIUM: "#ca8a04",
     RiskLevel.LOW: "#2563eb",
     RiskLevel.CLEAN: "#16a34a",
+    RiskLevel.UNKNOWN: "#64748b",
 }
 
 SCORE_FIELDS = (

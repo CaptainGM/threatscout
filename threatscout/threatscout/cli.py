@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import re
 from pathlib import Path
 
 import click
@@ -14,20 +16,32 @@ from threatscout.report import save_html, save_json, to_json
 
 console = Console(force_terminal=True)
 
+
+def _file_stem(ioc: str) -> str:
+    # Dosya adinda : ? gibi Windows'un kabul etmedigi karakterler olmasin
+    clean = re.sub(r"[^A-Za-z0-9._-]+", "_", ioc).strip("_")[:60]
+    digest = hashlib.sha256(ioc.encode("utf-8")).hexdigest()[:8]
+    return f"{clean}_{digest}"
+
 STYLES = {
     RiskLevel.CRITICAL: "bold red",
     RiskLevel.HIGH: "red",
     RiskLevel.MEDIUM: "yellow",
     RiskLevel.LOW: "blue",
     RiskLevel.CLEAN: "green",
+    RiskLevel.UNKNOWN: "dim",
 }
 
 
 def _show(report) -> None:
     style = STYLES.get(report.risk_level, "white")
+    if report.risk_level == RiskLevel.UNKNOWN:
+        score = "Yetersiz veri"
+    else:
+        score = f"Skor: [bold]{report.threat_score}[/bold]/100"
     console.print(Panel(
         f"[{style}]{report.risk_level.value}[/{style}]  "
-        f"Skor: [bold]{report.threat_score}[/bold]/100\n"
+        f"{score}\n"
         f"IOC: {report.ioc} ({report.ioc_type.value})",
         title="ThreatScout",
     ))
@@ -51,7 +65,7 @@ async def _scan(ioc: str, no_cache: bool, fmt: str, output: str | None):
         if fmt == "json":
             console.print(to_json(report) if not output else f"Kaydedildi: {save_json(report, output)}")
         elif fmt == "html":
-            path = save_html(report, output or f"reports/{ioc.replace('/', '_')}.html")
+            path = save_html(report, output or f"reports/{_file_stem(ioc)}.html")
             console.print(f"HTML: {path}")
     finally:
         await engine.close()
@@ -89,7 +103,7 @@ def batch(file: str, no_cache: bool, output_dir: str):
                 console.rule(ioc)
                 report = await engine.enrich(ioc, use_cache=not no_cache)
                 _show(report)
-                save_json(report, Path(output_dir) / f"{ioc.replace('/', '_')}.json")
+                save_json(report, Path(output_dir) / f"{_file_stem(ioc)}.json")
         finally:
             await engine.close()
 

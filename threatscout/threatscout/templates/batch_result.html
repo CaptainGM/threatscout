@@ -33,7 +33,11 @@
           </td>
           <td><span class="tag">{{ r.ioc_type.value | upper }}</span></td>
           <td>
-            <strong style="font-family: 'JetBrains Mono', monospace;">{{ r.threat_score }}</strong>/100
+            {% if r.risk_level.value == 'UNKNOWN' %}
+              —
+            {% else %}
+              <strong style="font-family: 'JetBrains Mono', monospace;">{{ r.threat_score }}</strong>/100
+            {% endif %}
           </td>
           <td>
             {% set r_lower = r.risk_level.value | lower %}
@@ -45,8 +49,10 @@
               <span class="badge badge-medium"><i class="fa-solid fa-circle-exclamation"></i> ORTA</span>
             {% elif r_lower == 'low' %}
               <span class="badge badge-low"><i class="fa-solid fa-info"></i> DÜŞÜK</span>
+            {% elif r_lower == 'unknown' %}
+              <span class="badge badge-unknown"><i class="fa-solid fa-circle-question"></i> VERİ YOK</span>
             {% else %}
-              <span class="badge badge-clean"><i class="fa-solid fa-shield-check"></i> TEMİZ</span>
+              <span class="badge badge-clean"><i class="fa-solid fa-circle-check"></i> TEMİZ</span>
             {% endif %}
           </td>
           <td style="text-align: right;">

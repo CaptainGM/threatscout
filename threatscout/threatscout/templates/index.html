@@ -6,13 +6,13 @@
 <!-- HERO BÖLÜMÜ -->
 <div style="margin-bottom: 2rem; text-align: center;">
   <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 0.35rem 0.9rem; border-radius: 999px; font-size: 0.825rem; color: var(--accent); font-weight: 600; margin-bottom: 1rem;">
-    <i class="fa-solid fa-bolt"></i> Yapay Zeka & OSINT Destekli Tehdit Taraması
+    <i class="fa-solid fa-bolt"></i> Açık Kaynak İstihbaratı (OSINT) ile Tehdit Taraması
   </div>
   <h1 style="font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; margin-bottom: 0.5rem;">
     Tehdit Göstergelerini <span style="background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Anında Analiz Edin</span>
   </h1>
   <p style="color: var(--text-muted); max-width: 650px; margin: 0 auto; font-size: 1rem;">
-    Şüpheli bulduğunuz IP adresi, internet sitesi, bağlantı veya dosya hash'ini yazın; VirusTotal, Shodan, AbuseIPDB gibi 8+ küresel siber güvenlik motorundan eş zamanlı sorgulayın.
+    Şüpheli bulduğunuz IP adresi, internet sitesi, bağlantı veya dosya hash'ini yazın; VirusTotal, Shodan, AbuseIPDB gibi birden fazla güvenlik kaynağından aynı anda sorgulayın.
   </p>
 </div>
 
@@ -25,9 +25,9 @@
     </span>
     <i id="guide-arrow" class="fa-solid fa-chevron-down" style="transition: transform 0.3s ease;"></i>
   </div>
-  
+
   <div id="guide-body" class="guide-content" style="display: grid;">
-    
+
     <div class="info-card">
       <div class="info-card-header">
         <i class="fa-solid fa-network-wired" style="color: #38bdf8;"></i> IP Adresi Nedir?
@@ -61,10 +61,12 @@
       </div>
       <div class="info-card-desc">
         <strong>0 - 100</strong> arası puanlanır:
-        <span style="color:#10b981; font-weight:600;">0-19 Temiz</span>, 
-        <span style="color:#38bdf8; font-weight:600;">20-39 Düşük</span>, 
-        <span style="color:#f59e0b; font-weight:600;">40-69 Orta/Şüpheli</span>, 
-        <span style="color:#f43f5e; font-weight:700;">70-100 Yüksek/Kritik Tehdit</span> anlamına gelir.
+        <span style="color:#10b981; font-weight:600;">0 Temiz</span>,
+        <span style="color:#38bdf8; font-weight:600;">1-39 Düşük</span>,
+        <span style="color:#f59e0b; font-weight:600;">40-59 Orta</span>,
+        <span style="color:#f97316; font-weight:600;">60-79 Yüksek</span>,
+        <span style="color:#f43f5e; font-weight:700;">80-100 Kritik</span>.
+        Hiçbir kaynaktan veri gelmezse sonuç <strong>Yetersiz Veri</strong> olur; bu temiz demek değildir.
       </div>
     </div>
 
@@ -74,7 +76,7 @@
 <!-- TEKİL TARAMA KARTI -->
 <div class="card" style="position: relative; overflow: hidden;">
   <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #38bdf8, #818cf8);"></div>
-  
+
   <div class="card-header">
     <div class="card-title">
       <i class="fa-solid fa-magnifying-glass-chart"></i>
@@ -87,15 +89,15 @@
     <label for="ioc-input">
       Taramak İstediğiniz Değer (IP, Domain, URL, Hash veya E-Posta):
     </label>
-    
+
     <div style="position: relative; display: flex; align-items: center; margin-bottom: 0.75rem;">
       <i class="fa-solid fa-shield-virus" style="position: absolute; left: 1rem; color: var(--text-dim); font-size: 1.1rem;"></i>
-      <input 
+      <input
         id="ioc-input"
-        name="ioc" 
-        placeholder="Örnek: 8.8.8.8  veya  ornek-site.com  veya  https://...  veya  SHA256 Hash" 
+        name="ioc"
+        placeholder="Örnek: 8.8.8.8  veya  ornek-site.com  veya  https://...  veya  SHA256 Hash"
         style="padding-left: 2.85rem; font-size: 1.05rem;"
-        required 
+        required
         autofocus
       >
     </div>
@@ -142,7 +144,7 @@
           <span>Hedef Taranıyor ve Zenginleştiriliyor...</span>
         </div>
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--emerald); margin-top: 0.35rem;">
-          &gt; VirusTotal, AbuseIPDB, Shodan &amp; WHOIS motorlarına eşzamanlı sorgu gönderildi...
+          &gt; Kaynaklara eşzamanlı sorgu gönderildi...
         </div>
         <div style="font-size: 0.775rem; color: var(--text-dim); margin-top: 0.2rem;">
           Lütfen bekleyin, küresel siber istihbarat veritabanları sorgulanıyor.
@@ -156,8 +158,8 @@
 <div id="result"></div>
 
 <!-- TOPLU TARAMA VE BİLGİ KARTLARI -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-  
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+
   <!-- TOPLU TARAMA -->
   <div class="card">
     <div class="card-header">
@@ -172,9 +174,9 @@
       Elinizdeki şüpheli IP veya domain listesini alt alta yapıştırarak tek seferde taratın:
     </p>
     <form method="post" action="/batch">
-      <textarea 
-        name="iocs" 
-        rows="5" 
+      <textarea
+        name="iocs"
+        rows="5"
         placeholder="1.1.1.1&#10;example.com&#10;8.8.4.4"
         style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;"
         required
@@ -187,7 +189,7 @@
     </form>
   </div>
 
-  <!-- DESTEKLENEN SERVİSLER BİLGİSİ -->
+  <!-- KAYNAK DURUMLARI (GERÇEK AYARLARA GÖRE) -->
   <div class="card">
     <div class="card-header">
       <div class="card-title">
@@ -197,24 +199,18 @@
         API Ayarları <i class="fa-solid fa-arrow-right"></i>
       </a>
     </div>
-    
+
     <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>VirusTotal:</strong> 70+ Antivirüs Motoru</span>
-        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
+      {% for p in providers %}
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <span><strong>{{ p.label }}:</strong> {{ p.desc }}</span>
+        {% if p.enabled %}
+        <span class="badge-status"><span class="pulse-dot"></span> Aktif</span>
+        {% else %}
+        <span class="badge" style="background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.3); white-space: nowrap;">Ayar gerekli</span>
+        {% endif %}
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>AbuseIPDB:</strong> Kötüye Kullanım / Şikayetler</span>
-        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
-      </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>Shodan:</strong> Açık Port & Servis Keşfi</span>
-        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
-      </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem;">
-        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>WHOIS / RDAP:</strong> Tescil & ASN Bilgisi</span>
-        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
-      </div>
+      {% endfor %}
     </div>
   </div>
 
@@ -231,7 +227,7 @@
       Tüm Geçmişi Gör <i class="fa-solid fa-chevron-right"></i>
     </a>
   </div>
-  
+
   <div class="table-container">
     <table>
       <thead>
@@ -255,7 +251,11 @@
             <span class="tag">{{ s.ioc_type | upper }}</span>
           </td>
           <td>
-            <strong style="font-family:'JetBrains Mono',monospace; font-size:1rem;">{{ s.threat_score }}</strong>/100
+            {% if s.risk_level == 'UNKNOWN' %}
+              —
+            {% else %}
+              <strong style="font-family:'JetBrains Mono',monospace; font-size:1rem;">{{ s.threat_score }}</strong>/100
+            {% endif %}
           </td>
           <td>
             {% set r_lower = s.risk_level | lower %}
@@ -267,8 +267,10 @@
               <span class="badge badge-medium"><i class="fa-solid fa-circle-exclamation"></i> ORTA</span>
             {% elif r_lower == 'low' %}
               <span class="badge badge-low"><i class="fa-solid fa-info"></i> DÜŞÜK</span>
+            {% elif r_lower == 'unknown' %}
+              <span class="badge badge-unknown"><i class="fa-solid fa-circle-question"></i> VERİ YOK</span>
             {% else %}
-              <span class="badge badge-clean"><i class="fa-solid fa-shield-check"></i> TEMİZ</span>
+              <span class="badge badge-clean"><i class="fa-solid fa-circle-check"></i> TEMİZ</span>
             {% endif %}
           </td>
           <td style="text-align: right;">

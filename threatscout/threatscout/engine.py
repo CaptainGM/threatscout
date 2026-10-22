@@ -35,6 +35,9 @@ class SQLiteCache:
             )
 
     async def get(self, key: str) -> dict[str, Any] | None:
+        return await asyncio.to_thread(self._get, key)
+
+    def _get(self, key: str) -> dict[str, Any] | None:
         now = datetime.now(timezone.utc).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
@@ -44,6 +47,9 @@ class SQLiteCache:
         return json.loads(row[0]) if row else None
 
     async def set(self, key: str, value: dict[str, Any], ttl_hours: int) -> None:
+        await asyncio.to_thread(self._set, key, value, ttl_hours)
+
+    def _set(self, key: str, value: dict[str, Any], ttl_hours: int) -> None:
         expires = (datetime.now(timezone.utc) + timedelta(hours=ttl_hours)).isoformat()
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
@@ -66,8 +72,8 @@ class RiskScorer:
         "misp": 0.04,
     }
     HASH_WEIGHTS = {"virustotal": 0.50, "urlhaus": 0.25, "otx": 0.15, "misp": 0.10}
-    DOMAIN_WEIGHTS = {"virustotal": 0.35, "urlhaus": 0.25, "otx": 0.20, "misp": 0.20}
-    URL_WEIGHTS = {"virustotal": 0.35, "urlhaus": 0.35, "otx": 0.15, "misp": 0.15}
+    DOMAIN_WEIGHTS = {"virustotal": 0.30, "urlhaus": 0.20, "otx": 0.15, "misp": 0.15, "shodan": 0.20}
+    URL_WEIGHTS = {"virustotal": 0.30, "urlhaus": 0.30, "otx": 0.10, "misp": 0.10, "shodan": 0.20}
     EMAIL_WEIGHTS = {"otx": 0.60, "misp": 0.40}
 
     def enrich_report(self, report: EnrichmentReport) -> EnrichmentReport:
@@ -122,6 +128,9 @@ class RiskScorer:
 
         active = {k: v for k, v in weights.items() if k in scores}
         if not active:
+            # Hic skor yoksa "temiz" demek yanlis olur, yetersiz veri diyoruz
+            report.risk_level = RiskLevel.UNKNOWN
+            report.threat_score = 0.0
             report.risk_breakdown = RiskBreakdown(weights_applied=weights)
             return report
 
@@ -158,7 +167,7 @@ class ThreatScoutEngine:
         store: Store | None = None,
     ) -> None:
         self.settings = settings or get_settings()
-        self.providers = providers or build_providers(self.settings)
+        self.providers = providers if providers is not None else build_providers(self.settings)
         self.cache = cache or SQLiteCache(self.settings.sqlite_cache_path)
         self.store = store or Store(self.settings.sqlite_path)
         self.scorer = RiskScorer()
@@ -178,24 +187,25 @@ class ThreatScoutEngine:
         ioc = ioc.strip()
         detected = ioc_type or detect_ioc_type(ioc)
         if detected == IOCType.UNKNOWN:
-            return EnrichmentReport(ioc=ioc, ioc_type=IOCType.UNKNOWN)
+            return EnrichmentReport(ioc=ioc, ioc_type=IOCType.UNKNOWN, risk_level=RiskLevel.UNKNOWN)
 
         active = [p for p in self.providers if p.supports(detected)]
         results = await asyncio.gather(
             *[self._query(p, ioc, detected, use_cache) for p in active]
         )
+        successful = [r for r in results if r.success]
 
         report = EnrichmentReport(
             ioc=ioc,
             ioc_type=detected,
             providers=list(results),
-            cached=all(r.cached for r in results if r.success),
+            cached=bool(successful) and all(r.cached for r in successful),
         )
         self._aggregate(report)
         self.scorer.enrich_report(report)
         await self._enrich_cves(report)
         if persist:
-            self.store.save_scan(report)
+            await asyncio.to_thread(self.store.save_scan, report)
         if persist and notify:
             await self._notify(report)
         return report

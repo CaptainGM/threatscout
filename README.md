@@ -1,44 +1,51 @@
 # ThreatScout
 
-Şüpheli IP, site (domain), link ve dosya hash'lerini tarayan basit ve hızlı bir siber istihbarat aracı. 
+ThreatScout, şüpheli bir IP adresini, site adını (domain), linki veya dosya hash'ini birkaç güvenlik servisinde aynı anda kontrol eden küçük bir programdır.
 
-Bir IP veya link gördüğünde "bu virüslü mü, hacker sunucusu mu?" diye merak ettiğinde buraya yapıştırıyorsun; VirusTotal, Shodan, AbuseIPDB gibi yerlere sorup sana 0-100 arası bir tehlike puanı ve özet rapor veriyor.
+Girdiğin değerin türünü kendisi tanır (IP, domain, URL, hash veya e-posta). Sonra VirusTotal, AbuseIPDB, Shodan gibi servislere sorar ve 0-100 arası bir risk puanı verir.
 
----
+## Neler yapabilir?
 
-## Ne İşe Yarar? (Kısaca)
+- Tek bir değeri web sayfasından ya da terminalden taramak
+- Listeyi toplu taramak (en fazla 50 satır)
+- Geçmiş taramaları veritabanında saklamak
+- Sonucu PDF, HTML ya da JSON olarak kaydetmek
+- Kendi programlarından kullanmak için bir REST API (`/docs` adresinde açıklaması var)
 
-- **IP Sorgulama:** IP hangi ülkede, kime ait, açık portu var mı, daha önce saldırı yapmış mı?
-- **Domain / URL Sorgulama:** Bu site dolandırıcı (phishing) sitesi mi, virüs yayıyor mu?
-- **Hash Sorgulama:** İndirdiğin bir dosyanın özeti (MD5/SHA256) bilinen bir virüsle eşleşiyor mu?
-- **Raporlama:** İstersen sonucu PDF veya HTML olarak indirebilirsin.
+## Kurulum
 
----
+1. Bilgisayarında Python 3.11 veya daha yeni bir sürüm olsun.
+2. `threatscout` klasörünün içinde sanal ortam oluştur ve kütüphaneleri kur:
 
-## Nasıl Çalıştırılır?
+   ```
+   cd threatscout
+   python -m venv .venv
+   .venv\Scripts\activate
+   pip install -e ".[dev]"
+   ```
 
-En kolayı: Klasördeki `baslat.bat` dosyasına çift tıkla, otomatik tarayıcıyı açar.
+3. `threatscout` klasöründeki `.env.example` dosyasının kopyasını al ve adını `.env` yap.
+4. `.env` dosyasını açıp kendi API anahtarlarını yaz. Anahtarı olmayan servis kapalı kalır, bu bir hata değil.
 
-Manuel çalıştırmak istersen:
+Anahtarları VirusTotal, AbuseIPDB, Shodan, AlienVault OTX ve GreyNoise sitelerinden ücretsiz alabilirsin. URLhaus için abuse.ch anahtarı gerekebilir.
 
-```bash
-cd threatscout
-.venv\Scripts\activate
-python -m uvicorn threatscout.api:app --host 127.0.0.1 --port 8000
-```
+## Çalıştırma
 
-Tarayıcıdan: `http://127.0.0.1:8000`
+- En kolayı: ana klasördeki `baslat.bat` dosyasına çift tıkla. Tarayıcı kendiliğinden açılır: http://127.0.0.1:8000
+- Terminalden taramak istersen:
 
----
+  ```
+  threatscout scan 8.8.8.8
+  threatscout scan ornek.com --format html -o rapor.html
+  threatscout batch liste.txt -d reports
+  ```
 
-## API Anahtarları (.env)
+## Güvenlik notları
 
-Bazı servisler (VirusTotal, AbuseIPDB, Shodan) ücretsiz API anahtarı istiyor. `threatscout/.env` dosyasına anahtarlarını yapıştırabilirsin:
+- `.env` dosyası API anahtarlarını taşır. Bu dosyayı kimseyle paylaşma ve GitHub'a yükleme. `.gitignore` dosyası bunu zaten engelliyor.
+- `WEB_PASSWORD` boşsa web sayfası parolasız açılır. Bu yüzden programı sadece kendi bilgisayarında kullan.
 
-```env
-VIRUSTOTAL_API_KEY=senin_anahtarin
-ABUSEIPDB_API_KEY=senin_anahtarin
-SHODAN_API_KEY=senin_anahtarin
-```
+## Bilinen eksikler
 
-Anahtarın yoksa da WHOIS ve URLhaus gibi servisler anahtarsız yine çalışır.
+- Ücretsiz API'lerin dakikalık ve günlük limitleri var. Çok fazla tarama yaparsan "limit doldu" hatası görebilirsin.
+- PDF raporda Türkçe harflerin bazıları (ş, ğ, ı, İ) benzer harflerle yazılır.
