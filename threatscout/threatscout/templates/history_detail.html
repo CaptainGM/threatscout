@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Tarama Detayı #{{ report.id }} — ThreatScout{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1rem;">
+  <a href="/history" class="btn ghost btn-sm">
+    <i class="fa-solid fa-arrow-left"></i> Geçmiş Listesine Geri Dön
+  </a>
+</div>
+
+{% include "result.html" %}
+{% endblock %}

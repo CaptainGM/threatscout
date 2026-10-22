@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block title %}Tehdit Analizi & IOC Taraması — ThreatScout{% endblock %}
+
+{% block content %}
+
+<!-- HERO BÖLÜMÜ -->
+<div style="margin-bottom: 2rem; text-align: center;">
+  <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 0.35rem 0.9rem; border-radius: 999px; font-size: 0.825rem; color: var(--accent); font-weight: 600; margin-bottom: 1rem;">
+    <i class="fa-solid fa-bolt"></i> Yapay Zeka & OSINT Destekli Tehdit Taraması
+  </div>
+  <h1 style="font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em; color: #fff; margin-bottom: 0.5rem;">
+    Tehdit Göstergelerini <span style="background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Anında Analiz Edin</span>
+  </h1>
+  <p style="color: var(--text-muted); max-width: 650px; margin: 0 auto; font-size: 1rem;">
+    Şüpheli bulduğunuz IP adresi, internet sitesi, bağlantı veya dosya hash'ini yazın; VirusTotal, Shodan, AbuseIPDB gibi 8+ küresel siber güvenlik motorundan eş zamanlı sorgulayın.
+  </p>
+</div>
+
+<!-- YENİ BAŞLAYANLAR İÇİN REHBER (KNOWLEDGE / ONBOARDING KARTI) -->
+<div class="guide-box">
+  <div class="guide-title" onclick="toggleGuide()">
+    <span>
+      <i class="fa-solid fa-circle-question" style="margin-right: 0.5rem;"></i>
+      <strong>İlk Kez mi Kullanıyorsunuz?</strong> Neyin ne olduğunu ve nasıl çalıştığını öğrenin
+    </span>
+    <i id="guide-arrow" class="fa-solid fa-chevron-down" style="transition: transform 0.3s ease;"></i>
+  </div>
+  
+  <div id="guide-body" class="guide-content" style="display: grid;">
+    
+    <div class="info-card">
+      <div class="info-card-header">
+        <i class="fa-solid fa-network-wired" style="color: #38bdf8;"></i> IP Adresi Nedir?
+      </div>
+      <div class="info-card-desc">
+        İnternetteki her sunucunun veya cihazın kimlik numarasıdır (örn: <code>8.8.8.8</code>). Bilgisayar korsanlarının kullandığı sunucular, saldırı kaynakları veya botnet merkezleri IP analizi ile tespit edilir.
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <i class="fa-solid fa-globe" style="color: #10b981;"></i> Domain (Alan Adı) Nedir?
+      </div>
+      <div class="info-card-desc">
+        İnternet sitesi adıdır (örn: <code>google.com</code> veya sahte bir <code>banka-giris.xyz</code>). Oltalama (phishing) veya trojan dağıtan sahte siteleri yakalamak için taranır.
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <i class="fa-solid fa-fingerprint" style="color: #a855f7;"></i> Dosya Hash'i Nedir?
+      </div>
+      <div class="info-card-desc">
+        Bir dosyanın benzersiz dijital parmak izidir (MD5, SHA1 veya SHA256). Dosyanın kendisini yüklemenize gerek kalmadan, sadece hash kodunu girerek virüs olup olmadığını anlarsınız.
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <i class="fa-solid fa-gauge-high" style="color: #f59e0b;"></i> Risk Skoru Nasıl Hesaplanır?
+      </div>
+      <div class="info-card-desc">
+        <strong>0 - 100</strong> arası puanlanır:
+        <span style="color:#10b981; font-weight:600;">0-19 Temiz</span>, 
+        <span style="color:#38bdf8; font-weight:600;">20-39 Düşük</span>, 
+        <span style="color:#f59e0b; font-weight:600;">40-69 Orta/Şüpheli</span>, 
+        <span style="color:#f43f5e; font-weight:700;">70-100 Yüksek/Kritik Tehdit</span> anlamına gelir.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TEKİL TARAMA KARTI -->
+<div class="card" style="position: relative; overflow: hidden;">
+  <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #38bdf8, #818cf8);"></div>
+  
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-magnifying-glass-chart"></i>
+      Hızlı Tehdit Taraması (IOC Arama)
+    </div>
+    <span style="font-size: 0.8rem; color: var(--text-dim);">Otomatik Tip Tespiti</span>
+  </div>
+
+  <form hx-post="/scan" hx-target="#result" hx-indicator="#busy" id="scan-form">
+    <label for="ioc-input">
+      Taramak İstediğiniz Değer (IP, Domain, URL, Hash veya E-Posta):
+    </label>
+    
+    <div style="position: relative; display: flex; align-items: center; margin-bottom: 0.75rem;">
+      <i class="fa-solid fa-shield-virus" style="position: absolute; left: 1rem; color: var(--text-dim); font-size: 1.1rem;"></i>
+      <input 
+        id="ioc-input"
+        name="ioc" 
+        placeholder="Örnek: 8.8.8.8  veya  ornek-site.com  veya  https://...  veya  SHA256 Hash" 
+        style="padding-left: 2.85rem; font-size: 1.05rem;"
+        required 
+        autofocus
+      >
+    </div>
+
+    <!-- HIZLI ÖRNEKLER DÜĞMESİ -->
+    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+      <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
+        <i class="fa-regular fa-lightbulb" style="color: var(--amber);"></i> Hemen Dene:
+      </span>
+      <button type="button" class="btn ghost btn-sm" onclick="fillExample('8.8.8.8')">
+        <span style="color:var(--emerald);">●</span> Güvenli IP (Google DNS)
+      </button>
+      <button type="button" class="btn ghost btn-sm" onclick="fillExample('google.com')">
+        <span style="color:var(--emerald);">●</span> Güvenli Domain
+      </button>
+      <button type="button" class="btn ghost btn-sm" onclick="fillExample('185.220.101.5')">
+        <span style="color:var(--rose);">●</span> Şüpheli Tor/Çıkış IP
+      </button>
+      <button type="button" class="btn ghost btn-sm" onclick="fillExample('44d88612fea8a8f36de82e1278abb02f')">
+        <span style="color:var(--amber);">●</span> EICAR Test Virüs Hash
+      </button>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--line); padding-top: 1rem;">
+      <label style="margin: 0; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none;">
+        <input type="checkbox" name="no_cache" value="true" style="width: auto; margin: 0; cursor: pointer;">
+        <span>Önbelleği (Cache) atla, servislere canlı sor</span>
+      </label>
+
+      <button type="submit" style="min-width: 170px;">
+        <i class="fa-solid fa-magnifying-glass"></i> Şimdi Tara
+      </button>
+    </div>
+
+    <!-- SİBER RADAR VE DURUM ANİMASYONU -->
+    <div id="busy" class="radar-scanner">
+      <div class="radar-circle">
+        <div class="radar-sweep"></div>
+        <div class="radar-blip"></div>
+      </div>
+      <div style="flex: 1;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-size: 1rem; font-weight: 700;">
+          <i class="fa-solid fa-crosshairs" style="color: var(--accent);"></i>
+          <span>Hedef Taranıyor ve Zenginleştiriliyor...</span>
+        </div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--emerald); margin-top: 0.35rem;">
+          &gt; VirusTotal, AbuseIPDB, Shodan &amp; WHOIS motorlarına eşzamanlı sorgu gönderildi...
+        </div>
+        <div style="font-size: 0.775rem; color: var(--text-dim); margin-top: 0.2rem;">
+          Lütfen bekleyin, küresel siber istihbarat veritabanları sorgulanıyor.
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- SONUÇ ALANI -->
+<div id="result"></div>
+
+<!-- TOPLU TARAMA VE BİLGİ KARTLARI -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+  
+  <!-- TOPLU TARAMA -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-list-check"></i> Toplu Tarama (Batch Scan)
+      </div>
+      <span class="badge" style="background: rgba(129, 140, 248, 0.15); color: var(--accent-secondary); border: 1px solid rgba(129, 140, 248, 0.3);">
+        Maks 50 Adet
+      </span>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+      Elinizdeki şüpheli IP veya domain listesini alt alta yapıştırarak tek seferde taratın:
+    </p>
+    <form method="post" action="/batch">
+      <textarea 
+        name="iocs" 
+        rows="5" 
+        placeholder="1.1.1.1&#10;example.com&#10;8.8.4.4"
+        style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;"
+        required
+      ></textarea>
+      <div style="margin-top: 0.85rem; text-align: right;">
+        <button type="submit" class="btn ghost btn-sm">
+          <i class="fa-solid fa-layer-group"></i> Listeyi Toplu Analiz Et
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- DESTEKLENEN SERVİSLER BİLGİSİ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-cubes"></i> Entegre İstihbarat Kaynakları
+      </div>
+      <a href="/settings" style="font-size: 0.8rem; color: var(--accent); text-decoration: none;">
+        API Ayarları <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>VirusTotal:</strong> 70+ Antivirüs Motoru</span>
+        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>AbuseIPDB:</strong> Kötüye Kullanım / Şikayetler</span>
+        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>Shodan:</strong> Açık Port & Servis Keşfi</span>
+        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem;">
+        <span><i class="fa-solid fa-check" style="color:var(--emerald); margin-right: 0.4rem;"></i> <strong>WHOIS / RDAP:</strong> Tescil & ASN Bilgisi</span>
+        <span class="badge-status"><span class="pulse-dot"></span> Hazır</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SON TARAMALAR TABLOSU -->
+{% if scans %}
+<div class="card" style="margin-top: 1.5rem;">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-history"></i> Son Gerçekleştirilen Taramalar
+    </div>
+    <a href="/history" style="font-size: 0.825rem; color: var(--accent); text-decoration: none;">
+      Tüm Geçmişi Gör <i class="fa-solid fa-chevron-right"></i>
+    </a>
+  </div>
+  
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Taranan Değer (IOC)</th>
+          <th>Türü</th>
+          <th>Tehdit Skoru</th>
+          <th>Risk Düzeyi</th>
+          <th style="text-align: right;">İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scans %}
+        <tr>
+          <td>
+            <a href="/history/{{ s.id }}" style="font-family:'JetBrains Mono',monospace; font-weight:600; color:#fff;">
+              {{ s.ioc }}
+            </a>
+          </td>
+          <td>
+            <span class="tag">{{ s.ioc_type | upper }}</span>
+          </td>
+          <td>
+            <strong style="font-family:'JetBrains Mono',monospace; font-size:1rem;">{{ s.threat_score }}</strong>/100
+          </td>
+          <td>
+            {% set r_lower = s.risk_level | lower %}
+            {% if r_lower == 'critical' %}
+              <span class="badge badge-critical"><i class="fa-solid fa-skull"></i> KRİTİK</span>
+            {% elif r_lower == 'high' %}
+              <span class="badge badge-high"><i class="fa-solid fa-triangle-exclamation"></i> YÜKSEK</span>
+            {% elif r_lower == 'medium' %}
+              <span class="badge badge-medium"><i class="fa-solid fa-circle-exclamation"></i> ORTA</span>
+            {% elif r_lower == 'low' %}
+              <span class="badge badge-low"><i class="fa-solid fa-info"></i> DÜŞÜK</span>
+            {% else %}
+              <span class="badge badge-clean"><i class="fa-solid fa-shield-check"></i> TEMİZ</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <a href="/history/{{ s.id }}" class="btn ghost btn-sm" style="margin-right: 0.35rem;">
+              <i class="fa-solid fa-eye"></i> İncele
+            </a>
+            <a href="/history/{{ s.id }}/pdf" class="btn ghost btn-sm">
+              <i class="fa-solid fa-file-pdf"></i> PDF
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  function toggleGuide() {
+    const body = document.getElementById('guide-body');
+    const arrow = document.getElementById('guide-arrow');
+    if (body.style.display === 'none') {
+      body.style.display = 'grid';
+      arrow.style.transform = 'rotate(0deg)';
+    } else {
+      body.style.display = 'none';
+      arrow.style.transform = 'rotate(-90deg)';
+    }
+  }
+
+  function fillExample(val) {
+    const input = document.getElementById('ioc-input');
+    input.value = val;
+    input.focus();
+    // Otomatik hafif yanıp sönme efekti ver
+    input.style.borderColor = 'var(--emerald)';
+    setTimeout(() => {
+      input.style.borderColor = '';
+    }, 600);
+  }
+</script>
+
+{% endblock %}

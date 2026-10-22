@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "threatscout"
+version = "1.0.0"
+description = "Threat Intelligence & IOC Enrichment Engine"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.26.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "rich>=13.7.0",
+    "click>=8.1.0",
+    "jinja2>=3.1.0",
+    "slowapi>=0.1.9",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.1.0",
+    "fpdf2>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0"]
+
+[project.scripts]
+threatscout = "threatscout.cli:cli"
+threatscout-api = "threatscout.api:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["threatscout*"]
+
+[tool.setuptools.package-data]
+threatscout = ["templates/*.html"]

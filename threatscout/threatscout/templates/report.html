@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>ThreatScout İstihbarat Raporu — {{ report.ioc }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    :root {
+      --bg: #070b14;
+      --card: #0d1527;
+      --border: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: {{ risk_color }};
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2.5rem 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .badge {
+      background: var(--accent);
+      color: #fff;
+      padding: 0.6rem 1.5rem;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 0 15px var(--accent);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--card);
+      padding: 1.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+    }
+    .card-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .card-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      word-break: break-all;
+    }
+    h2 {
+      font-size: 1.15rem;
+      color: #fff;
+      margin: 1.75rem 0 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    th, td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    th {
+      background: rgba(13, 21, 39, 0.95);
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    .tag {
+      display: inline-block;
+      background: #1e293b;
+      color: var(--muted);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      margin: 0.2rem;
+      font-size: 0.825rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #map {
+      height: 320px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>ThreatScout Tehdit İstihbarat Raporu</h1>
+      <div style="color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem;">
+        IOC Tipi: <strong style="color: #fff;">{{ report.ioc_type.value | upper }}</strong>
+      </div>
+    </div>
+    <div class="badge">
+      {{ report.threat_score }} / 100 — {{ report.risk_level.value | upper }}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-label">Taranan Gösterge (IOC)</div>
+      <div class="card-val">{{ report.ioc }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Hesaplanan Tehdit Skoru</div>
+      <div class="card-val" style="color: var(--accent);">{{ report.threat_score }} / 100</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Önbellek (Cache) Kullanımı</div>
+      <div class="card-val">{{ "Evet (Önbellekten)" if report.cached else "Hayır (Canlı)" }}</div>
+    </div>
+  </div>
+
+  {% if report.geo.latitude and report.geo.longitude %}
+  <h2><i class="fa-solid fa-map-location-dot"></i> Coğrafi Konum</h2>
+  <div id="map"></div>
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">
+    {{ report.geo.city }}, {{ report.geo.country }} {% if report.geo.isp %}— Sağlayıcı: {{ report.geo.isp }}{% endif %}
+  </p>
+  {% endif %}
+
+  {% if report.whois %}
+  <h2><i class="fa-solid fa-id-card"></i> Tescil &amp; WHOIS Bilgileri</h2>
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <p><strong>Kayıt Sahibi / Kuruluş:</strong> {{ report.whois.get("name") or report.whois.get("handle") or "-" }}
+       {% if report.whois.get("country") %} ({{ report.whois.country }}){% endif %}</p>
+    {% if report.whois.get("mailbox_domain") %}
+    <p style="color: var(--muted); margin-top: 0.25rem;"><strong>E-Posta Domain:</strong> {{ report.whois.mailbox_domain }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <h2><i class="fa-solid fa-chart-pie"></i> Risk Skoru Dağılımı</h2>
+  <table>
+    <thead><tr><th>Servis</th><th>Puan</th><th>Ağırlık</th></tr></thead>
+    <tbody>
+      {% for row in breakdown_rows %}
+      <tr><td>{{ row.name }}</td><td>{{ row.score }}</td><td>%{{ (row.weight*100)|round(0) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2><i class="fa-solid fa-server"></i> İstihbarat Servisleri Yanıtları</h2>
+  <table>
+    <thead><tr><th>Sağlayıcı</th><th>Durum</th><th>Cache</th></tr></thead>
+    <tbody>
+      {% for p in report.providers %}
+      <tr>
+        <td><strong>{{ p.provider | title }}</strong></td>
+        <td>{{ "Başarılı" if p.success else p.error }}</td>
+        <td>{{ "Evet" if p.cached else "Hayır" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if report.cves %}
+  <h2><i class="fa-solid fa-bug"></i> Tespit Edilen Zaafiyetler (CVE)</h2>
+  <table>
+    <thead><tr><th>CVE No</th><th>CVSS</th><th>Açıklama</th></tr></thead>
+    <tbody>
+      {% for c in report.cves %}
+      <tr>
+        <td style="font-family:'JetBrains Mono',monospace; color:#f43f5e; font-weight:700;">{{ c.id }}</td>
+        <td>{{ c.score or "-" }}</td>
+        <td>{{ c.summary }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if report.tags %}
+  <h2><i class="fa-solid fa-tags"></i> Tehdit Etiketleri</h2>
+  <div style="margin-bottom: 2rem;">
+    {% for t in report.tags %}<span class="tag"># {{ t }}</span>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if report.geo.latitude and report.geo.longitude %}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const m = L.map('map').setView([{{ report.geo.latitude }}, {{ report.geo.longitude }}], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
+    L.marker([{{ report.geo.latitude }}, {{ report.geo.longitude }}]).addTo(m);
+  </script>
+  {% endif %}
+
+</body>
+</html>

@@ -1,0 +1,296 @@
+{% if error %}
+<div class="error" style="margin-top: 1.5rem;">
+  <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;"></i>
+  <div>
+    <strong>Tarama Hatası:</strong> {{ error }}
+    <div style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.2rem;">Lütfen girdiğiniz değerin geçerli bir IP, domain, URL veya hash olduğundan emin olun.</div>
+  </div>
+</div>
+{% elif report %}
+
+{% set r_level = report.risk_level.value | lower %}
+{% if r_level == 'critical' %}
+  {% set theme_color = '#f43f5e' %}
+  {% set glow_class = 'border-critical' %}
+  {% set icon_class = 'fa-skull' %}
+  {% set badge_class = 'badge-critical' %}
+  {% set status_desc = 'KRİTİK TEHDİT! Bu değer birden fazla güvenlik motoru tarafından aktif bir saldırı veya zararlı yazılım kaynağı olarak tespit edildi.' %}
+{% elif r_level == 'high' %}
+  {% set theme_color = '#f97316' %}
+  {% set glow_class = 'border-high' %}
+  {% set icon_class = 'fa-triangle-exclamation' %}
+  {% set badge_class = 'badge-high' %}
+  {% set status_desc = 'YÜKSEK RİSK! Bu hedef şüpheli aktiviteler, kötüye kullanım şikayetleri veya tehdit listeleri ile doğrudan bağlantılı.' %}
+{% elif r_level == 'medium' %}
+  {% set theme_color = '#f59e0b' %}
+  {% set glow_class = 'border-medium' %}
+  {% set icon_class = 'fa-circle-exclamation' %}
+  {% set badge_class = 'badge-medium' %}
+  {% set status_desc = 'ORTA / ŞÜPHELİ RİSK! Hedefle ilgili bazı şüpheli göstergeler veya yakın zamanda yapılmış raporlar bulunuyor.' %}
+{% elif r_level == 'low' %}
+  {% set theme_color = '#38bdf8' %}
+  {% set glow_class = 'border-low' %}
+  {% set icon_class = 'fa-info' %}
+  {% set badge_class = 'badge-low' %}
+  {% set status_desc = 'DÜŞÜK RİSK. Belirgin bir tehdit aktivitesi görülmedi ancak genel dikkat gerektiren unsurlar içerebilir.' %}
+{% else %}
+  {% set theme_color = '#10b981' %}
+  {% set glow_class = 'border-clean' %}
+  {% set icon_class = 'fa-shield-check' %}
+  {% set badge_class = 'badge-clean' %}
+  {% set status_desc = 'GÜVENLİ / TEMİZ. Taranan tüm uluslararası siber istihbarat motorlarında herhangi bir zararlı kayıt bulunamadı.' %}
+{% endif %}
+
+<div class="card" style="border-left: 5px solid {{ theme_color }}; box-shadow: 0 10px 35px -5px rgba(0,0,0,0.6); margin-top: 1.5rem;">
+  
+  <!-- ÜST ÖZET BAŞLIĞI -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 1.25rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+        <span class="tag" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); border-color: rgba(56, 189, 248, 0.3);">
+          {{ report.ioc_type.value | upper }} ANALİZİ
+        </span>
+        {% if report.id %}
+          <span style="font-size: 0.8rem; color: var(--text-dim);">Kayıt #{{ report.id }}</span>
+        {% endif %}
+      </div>
+      <h2 style="font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; color: #fff; word-break: break-all;">
+        {{ report.ioc }}
+      </h2>
+    </div>
+
+    <!-- RİSK KUTUSU & SKOR -->
+    <div style="display: flex; align-items: center; gap: 1.25rem;">
+      <div style="text-align: right;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.05em;">Hesaplanan Tehdit Skoru</div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 800; color: {{ theme_color }}; line-height: 1.1;">
+          {{ report.threat_score }}<span style="font-size: 1rem; color: var(--text-dim); font-weight: 400;">/100</span>
+        </div>
+      </div>
+      <div class="badge {{ badge_class }}" style="font-size: 0.95rem; padding: 0.6rem 1.1rem;">
+        <i class="fa-solid {{ icon_class }}"></i> {{ report.risk_level.value | upper }}
+      </div>
+    </div>
+  </div>
+
+  <!-- KULLANICI DOSTU DURUM AÇIKLAMASI -->
+  <div style="background: rgba(13, 21, 39, 0.6); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; margin: 1.25rem 0; display: flex; align-items: center; gap: 0.75rem;">
+    <i class="fa-solid fa-circle-info" style="color: {{ theme_color }}; font-size: 1.25rem;"></i>
+    <div style="font-size: 0.875rem; color: var(--text);">
+      <strong>Sonuç Değerlendirmesi:</strong> {{ status_desc }}
+    </div>
+  </div>
+
+  <!-- RAPOR İNDİRME / KAYIT BAĞLANTILARI -->
+  {% if report.id %}
+  <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <a href="/history/{{ report.id }}/pdf" class="btn" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-size: 0.85rem; padding: 0.5rem 1rem;">
+      <i class="fa-solid fa-file-pdf"></i> Resmi PDF Raporunu İndir
+    </a>
+    <a href="/history/{{ report.id }}" class="btn ghost btn-sm" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+      <i class="fa-solid fa-link"></i> Kalıcı Bağlantı & Paylaş
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- İKİLİ GRID: COĞRAFİ KONUM VE WHOIS BİLGİSİ -->
+  {% if report.geo or report.whois %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    
+    {% if report.geo %}
+    <div style="background: rgba(9, 14, 26, 0.7); border: 1px solid var(--line); border-radius: 10px; padding: 1rem;">
+      <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">
+        <i class="fa-solid fa-location-dot" style="color: var(--accent);"></i> Coğrafi Konum & Şebeke (ISP)
+      </div>
+      <div style="font-size: 0.95rem; font-weight: 600; color: #fff;">
+        {{ report.geo.get("country", "") }} {% if report.geo.get("city") %}— {{ report.geo.get("city") }}{% endif %}
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+        Sağlayıcı (ISP): <strong>{{ report.geo.get("isp") or "Bilinmiyor" }}</strong>
+      </div>
+      {% if report.geo.get("asn") %}
+      <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace;">
+        ASN: {{ report.geo.get("asn") }}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if report.whois %}
+    <div style="background: rgba(9, 14, 26, 0.7); border: 1px solid var(--line); border-radius: 10px; padding: 1rem;">
+      <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">
+        <i class="fa-solid fa-id-card" style="color: var(--accent-secondary);"></i> Tescil & WHOIS Kaydı
+      </div>
+      <div style="font-size: 0.95rem; font-weight: 600; color: #fff;">
+        {{ report.whois.get("name") or report.whois.get("handle") or "Gizli / Bilgi Yok" }}
+      </div>
+      {% if report.whois.get("mailbox_domain") %}
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+        Yetkili İletişim: <strong>{{ report.whois.mailbox_domain }}</strong>
+      </div>
+      {% endif %}
+      {% if report.whois.get("created") %}
+      <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem;">
+        Kayıt Tarihi: {{ report.whois.get("created") }}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  <!-- SAĞLAYICI (PROVIDER) SONUÇLARI TABLOSU -->
+  <div style="margin-bottom: 1.5rem;">
+    <div style="font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-server" style="color: var(--accent);"></i>
+      İstihbarat Servislerinin Yanıtları (Providers)
+    </div>
+    
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Güvenlik Servisi</th>
+            <th>Sorgu Durumu</th>
+            <th>Önbellek (Cache)</th>
+            <th>Detay</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in report.providers %}
+          <tr>
+            <td style="font-weight: 600; color: #fff;">
+              {{ p.provider | title }}
+            </td>
+            <td>
+              {% if p.success %}
+                <span style="color: var(--emerald); font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                  <i class="fa-solid fa-circle-check"></i> Başarılı (Veri Alındı)
+                </span>
+              {% else %}
+                <span style="color: var(--rose); font-size: 0.85rem;">
+                  <i class="fa-solid fa-circle-xmark"></i> {{ p.error or "Hata" }}
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if p.cached %}
+                <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3);">
+                  <i class="fa-solid fa-database"></i> Önbellekten
+                </span>
+              {% else %}
+                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3);">
+                  <i class="fa-solid fa-bolt"></i> Canlı Sorgu
+                </span>
+              {% endif %}
+            </td>
+            <td style="font-size: 0.85rem; color: var(--text-muted);">
+              {% if p.data and p.data.get("positives") is not none %}
+                <strong>{{ p.data.get("positives") }} / {{ p.data.get("total") }}</strong> motor zararlı dedi
+              {% elif p.data and p.data.get("abuse_confidence_score") is not none %}
+                Kötüye Kullanım Skoru: <strong>%{{ p.data.get("abuse_confidence_score") }}</strong> ({{ p.data.get("total_reports") }} şikayet)
+              {% elif p.data and p.data.get("ports") %}
+                Açık Portlar: <code>{{ p.data.get("ports") | join(", ") }}</code>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RİSK DAĞILIMI (AĞIRLIKLAR) -->
+  {% if breakdown_rows %}
+  <div style="margin-bottom: 1.5rem;">
+    <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-chart-pie" style="color: var(--accent-secondary);"></i>
+      Risk Skoru Ağırlık Dağılımı
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Bileşen</th>
+            <th>Sağlayıcı Skoru</th>
+            <th>Formüldeki Ağırlığı</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in breakdown_rows %}
+          <tr>
+            <td style="font-weight: 600;">{{ row.name }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace;">{{ "%.1f"|format(row.score) }} / 100</td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; max-width: 120px;">
+                  <div style="height: 100%; width: {{ (row.weight*100)|round(0) }}%; background: var(--accent);"></div>
+                </div>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">%{{ (row.weight*100)|round(0) }}</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- CVE GÜVENLİK AÇIKLARI -->
+  {% if report.cves %}
+  <div style="margin-bottom: 1.5rem;">
+    <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-bug" style="color: var(--rose);"></i>
+      İlişkili Güvenlik Zaafiyetleri (CVE / NVD)
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>CVE Numarası</th>
+            <th>CVSS Skoru</th>
+            <th>Açıklama / Zaafiyet Özeti</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in report.cves %}
+          <tr>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--rose);">
+              {{ c.id }}
+            </td>
+            <td>
+              <span class="badge badge-high">{{ c.score or "N/A" }} {{ c.severity or "" }}</span>
+            </td>
+            <td style="font-size: 0.85rem; color: var(--text-muted);">
+              {{ c.summary }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ETİKETLER (TAGS) -->
+  {% if report.tags %}
+  <div>
+    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">
+      <i class="fa-solid fa-tags"></i> Tespit Edilen Tehdit Etiketleri:
+    </div>
+    <div>
+      {% for t in report.tags %}
+        <span class="tag" style="background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.25); color: #fff;">
+          # {{ t }}
+        </span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}

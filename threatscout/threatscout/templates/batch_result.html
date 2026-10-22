@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Toplu Tarama Sonuçları — ThreatScout{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-list-check"></i> Toplu Tarama Raporu
+    </div>
+    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent);">
+      {{ reports | length }} Adet Analiz Edildi
+    </span>
+  </div>
+
+  <div class="table-container" style="margin-bottom: 1.5rem;">
+    <table>
+      <thead>
+        <tr>
+          <th>Taranan Değer (IOC)</th>
+          <th>Türü</th>
+          <th>Tehdit Skoru</th>
+          <th>Risk Düzeyi</th>
+          <th style="text-align: right;">Detay</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td>
+            <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #fff;">
+              {{ r.ioc }}
+            </span>
+          </td>
+          <td><span class="tag">{{ r.ioc_type.value | upper }}</span></td>
+          <td>
+            <strong style="font-family: 'JetBrains Mono', monospace;">{{ r.threat_score }}</strong>/100
+          </td>
+          <td>
+            {% set r_lower = r.risk_level.value | lower %}
+            {% if r_lower == 'critical' %}
+              <span class="badge badge-critical"><i class="fa-solid fa-skull"></i> KRİTİK</span>
+            {% elif r_lower == 'high' %}
+              <span class="badge badge-high"><i class="fa-solid fa-triangle-exclamation"></i> YÜKSEK</span>
+            {% elif r_lower == 'medium' %}
+              <span class="badge badge-medium"><i class="fa-solid fa-circle-exclamation"></i> ORTA</span>
+            {% elif r_lower == 'low' %}
+              <span class="badge badge-low"><i class="fa-solid fa-info"></i> DÜŞÜK</span>
+            {% else %}
+              <span class="badge badge-clean"><i class="fa-solid fa-shield-check"></i> TEMİZ</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if r.id %}
+            <a href="/history/{{ r.id }}" class="btn ghost btn-sm">
+              <i class="fa-solid fa-eye"></i> İncele
+            </a>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="/" class="btn">
+      <i class="fa-solid fa-arrow-left"></i> Yeni Bir Tarama Yap
+    </a>
+    <a href="/history" class="btn ghost">
+      <i class="fa-solid fa-clock-rotate-left"></i> Tüm Geçmişe Git
+    </a>
+  </div>
+</div>
+{% endblock %}

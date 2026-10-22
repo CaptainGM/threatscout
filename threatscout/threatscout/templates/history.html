@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Tarama Geçmişi — ThreatScout{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-clock-rotate-left"></i> Tarama Arşivi ve Geçmişi
+    </div>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">
+      Toplam <strong>{{ scans | length }}</strong> kayıt listeleniyor
+    </span>
+  </div>
+
+  <!-- ARAMA ÇUBUĞU -->
+  <form method="get" action="/history" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+    <div style="flex: 1; position: relative;">
+      <i class="fa-solid fa-filter" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+      <input 
+        name="q" 
+        value="{{ q }}" 
+        placeholder="Geçmişte ara (örn: 8.8.8.8, domain veya hash...)" 
+        style="padding-left: 2.75rem;"
+      >
+    </div>
+    <button type="submit" class="btn" style="min-width: 120px;">
+      <i class="fa-solid fa-magnifying-glass"></i> Filtrele
+    </button>
+    {% if q %}
+    <a href="/history" class="btn ghost">
+      <i class="fa-solid fa-xmark"></i> Temizle
+    </a>
+    {% endif %}
+  </form>
+
+  {% if scans %}
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Taranan IOC</th>
+          <th>Tür</th>
+          <th>Tehdit Skoru</th>
+          <th>Risk Durumu</th>
+          <th>Tarama Tarihi</th>
+          <th style="text-align: right;">Raporlar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scans %}
+        <tr>
+          <td style="font-family:'JetBrains Mono',monospace; color:var(--text-dim);">#{{ s.id }}</td>
+          <td>
+            <a href="/history/{{ s.id }}" style="font-family:'JetBrains Mono',monospace; font-weight:600; color:#fff;">
+              {{ s.ioc }}
+            </a>
+          </td>
+          <td><span class="tag">{{ s.ioc_type | upper }}</span></td>
+          <td><strong style="font-family:'JetBrains Mono',monospace; font-size:1.05rem;">{{ s.threat_score }}</strong>/100</td>
+          <td>
+            {% set r_lower = s.risk_level | lower %}
+            {% if r_lower == 'critical' %}
+              <span class="badge badge-critical"><i class="fa-solid fa-skull"></i> KRİTİK</span>
+            {% elif r_lower == 'high' %}
+              <span class="badge badge-high"><i class="fa-solid fa-triangle-exclamation"></i> YÜKSEK</span>
+            {% elif r_lower == 'medium' %}
+              <span class="badge badge-medium"><i class="fa-solid fa-circle-exclamation"></i> ORTA</span>
+            {% elif r_lower == 'low' %}
+              <span class="badge badge-low"><i class="fa-solid fa-info"></i> DÜŞÜK</span>
+            {% else %}
+              <span class="badge badge-clean"><i class="fa-solid fa-shield-check"></i> TEMİZ</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.85rem; color:var(--text-muted);">{{ s.created_at }}</td>
+          <td style="text-align: right;">
+            <a href="/history/{{ s.id }}" class="btn ghost btn-sm" style="margin-right: 0.35rem;">
+              <i class="fa-solid fa-eye"></i> Detay
+            </a>
+            <a href="/history/{{ s.id }}/pdf" class="btn ghost btn-sm">
+              <i class="fa-solid fa-file-pdf"></i> PDF
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-box-archive" style="font-size: 2.5rem; color: var(--text-dim); margin-bottom: 1rem;"></i>
+    <p style="font-size: 1.1rem; color: #fff; font-weight: 600;">Herhangi bir tarama kaydı bulunamadı.</p>
+    <p style="font-size: 0.9rem; margin-top: 0.25rem;">Ana sayfadan bir IP, domain veya dosya hash'i aratarak başlayabilirsiniz.</p>
+    <a href="/" class="btn" style="margin-top: 1.25rem;">
+      <i class="fa-solid fa-plus"></i> Yeni Tarama Başlat
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

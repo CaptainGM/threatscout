@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Ayarlar &amp; Entegrasyonlar — ThreatScout{% endblock %}
+
+{% block content %}
+
+{% if flash %}
+<div class="flash">
+  <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;"></i>
+  <div>{{ flash }}</div>
+</div>
+{% endif %}
+
+{% if new_key %}
+<div class="flash" style="background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.4); color: #bae6fd;">
+  <i class="fa-solid fa-key" style="font-size: 1.25rem; color: var(--accent);"></i>
+  <div>
+    <strong>Yeni API Anahtarınız Oluşturuldu!</strong> (Bu anahtar sadece 1 kez gösterilir, lütfen kaydedin):
+    <div style="margin-top: 0.5rem; font-family: 'JetBrains Mono', monospace; background: #070b14; padding: 0.6rem 0.85rem; border-radius: 6px; user-select: all; border: 1px solid var(--line); color: #fff;">
+      {{ new_key }}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- REST API AYARLARI -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-key"></i> REST API Kimlik Doğrulama
+    </div>
+    <a href="/docs" target="_blank" class="btn ghost btn-sm">
+      <i class="fa-solid fa-book-open"></i> Swagger API Dokümanı
+    </a>
+  </div>
+
+  <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+    ThreatScout'u kendi yazılımlarınıza, güvenlik duvarınıza (Firewall) veya SIEM sisteminize bağlamak için API anahtarı kullanabilirsiniz. İsteklerin başlığında (Header) <code>X-API-Key: {anahtar}</code> göndermeniz yeterlidir.
+    {% if app_api_configured %}<br><span style="color:var(--emerald);"><i class="fa-solid fa-check"></i> .env içindeki sabit APP_API_KEY anahtarı da aktiftir.</span>{% endif %}
+  </p>
+
+  <form method="post" action="/settings/keys" style="display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 220px;">
+      <label>Anahtar Tanımı / Uygulama Adı</label>
+      <input name="name" placeholder="Örn: SOC-Analiz-Botu veya Splunk-Entegrasyonu" required>
+    </div>
+    <button type="submit" class="btn">
+      <i class="fa-solid fa-plus"></i> Yeni API Anahtarı Üret
+    </button>
+  </form>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Anahtar Adı</th>
+          <th>Anahtar Ön Eki</th>
+          <th>Son Kullanım Tarihi</th>
+          <th style="text-align: right;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for k in keys %}
+        <tr>
+          <td style="font-weight: 600; color: #fff;">{{ k.name }}</td>
+          <td><code style="color: var(--accent);">{{ k.prefix }}••••••••</code></td>
+          <td style="color: var(--text-muted); font-size: 0.85rem;">{{ k.last_used or "Henüz kullanılmadı" }}</td>
+          <td style="text-align: right;">
+            <form method="post" action="/settings/keys/{{ k.id }}/delete" onsubmit="return confirm('Bu API anahtarını iptal etmek istediğinize emin misiniz?');">
+              <button class="btn danger btn-sm" type="submit">
+                <i class="fa-solid fa-trash-can"></i> Sil
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
+            Oluşturulmuş dinamik API anahtarı yok.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- WEBHOOK & SIEM ENTEGRASYONU -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-satellite-dish"></i> Webhook &amp; SIEM Entegrasyonu
+    </div>
+    <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: var(--purple); border: 1px solid rgba(168, 85, 247, 0.3);">
+      Otomatik Bildirim
+    </span>
+  </div>
+
+  <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+    Yapılan her taramadan sonra sonuç JSON verisi anında belirttiğiniz bir uç noktaya (Generic Webhook, Elasticsearch veya Splunk HEC) otomatik olarak iletilir.
+  </p>
+
+  <form method="post" action="/settings/webhooks" style="background: rgba(9, 14, 26, 0.5); border: 1px solid var(--line); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <label>Entegrasyon Adı</label>
+        <input name="name" placeholder="Örn: Discord / Slack / SIEM" required>
+      </div>
+      <div>
+        <label>Protokol / Tür</label>
+        <select name="kind">
+          <option value="generic">Generic Webhook (Bearer Token)</option>
+          <option value="elastic">Elasticsearch</option>
+          <option value="splunk">Splunk HEC</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label>Hedef Webhook URL</label>
+      <input name="url" placeholder="https://webhook.site/... veya https://siem.sirketiniz.com:8088/services/collector" required>
+    </div>
+
+    <div style="margin-bottom: 1.25rem;">
+      <label>Yetkilendirme Token / Şifre (Opsiyonel)</label>
+      <input name="token" placeholder="Bearer veya HEC Token">
+    </div>
+
+    <button type="submit" class="btn">
+      <i class="fa-solid fa-plus"></i> Webhook Entegrasyonunu Kaydet
+    </button>
+  </form>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Ad</th>
+          <th>Tür</th>
+          <th>Hedef URL</th>
+          <th>Durum</th>
+          <th style="text-align: right;">İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in webhooks %}
+        <tr>
+          <td style="font-weight: 600; color: #fff;">{{ w.name }}</td>
+          <td><span class="tag">{{ w.kind | upper }}</span></td>
+          <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.825rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ w.url }}
+          </td>
+          <td>
+            {% if w.enabled %}
+              <span class="badge badge-clean"><i class="fa-solid fa-check"></i> Aktif</span>
+            {% else %}
+              <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">Devre Dışı</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 0.35rem;">
+              <form method="post" action="/settings/webhooks/{{ w.id }}/toggle">
+                <input type="hidden" name="enabled" value="{{ 0 if w.enabled else 1 }}">
+                <button class="btn ghost btn-sm" type="submit">
+                  {{ "Durdur" if w.enabled else "Etkinleştir" }}
+                </button>
+              </form>
+              <form method="post" action="/settings/webhooks/{{ w.id }}/delete" onsubmit="return confirm('Bu webhook\'u silmek istediğinize emin misiniz?');">
+                <button class="btn danger btn-sm" type="submit">
+                  Sil
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
+            Kayıtlı webhook bulunmuyor.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
