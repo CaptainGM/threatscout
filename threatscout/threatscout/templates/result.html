@@ -9,7 +9,8 @@
 {% elif report %}
 
 {% set r_level = report.risk_level.value | lower %}
-{% set badge_label = report.risk_level.value | upper %}
+{% set level_names = {'CRITICAL': 'KRİTİK', 'HIGH': 'YÜKSEK', 'MEDIUM': 'ORTA', 'LOW': 'DÜŞÜK', 'CLEAN': 'TEMİZ', 'UNKNOWN': 'YETERSİZ VERİ'} %}
+{% set badge_label = level_names.get(report.risk_level.value, report.risk_level.value) %}
 {% if r_level == 'critical' %}
   {% set theme_color = '#f43f5e' %}
   {% set icon_class = 'fa-skull' %}

@@ -3,167 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Giriş Yap — ThreatScout Tehdit İstihbarat Platformu</title>
-  
+  <title>Giriş — ThreatScout</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-      background: #070b14;
-      background-image: 
-        radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
-        linear-gradient(180deg, #070b14 0%, #0a1020 100%);
-      color: #f1f5f9;
-      display: grid;
-      place-items: center;
-      min-height: 100vh;
-      padding: 1.5rem;
-    }
-
-    .login-card {
-      background: rgba(16, 26, 48, 0.8);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: 16px;
-      padding: 2.5rem 2rem;
-      width: min(420px, 100%);
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 30px -10px rgba(56, 189, 248, 0.2);
-    }
-
-    .brand-logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .brand-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #0284c7, #6366f1);
-      display: grid;
-      place-items: center;
-      color: #fff;
-      font-size: 1.35rem;
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
-    }
-
-    .brand-title {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: #fff;
-    }
-
-    .brand-title span {
-      background: linear-gradient(90deg, #38bdf8, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .login-subtitle {
-      text-align: center;
-      color: #94a3b8;
-      font-size: 0.9rem;
-      margin-bottom: 1.75rem;
-    }
-
-    label {
-      display: block;
-      color: #94a3b8;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-    }
-
-    input {
-      width: 100%;
-      background: rgba(9, 14, 26, 0.8);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
-      color: #fff;
-      font-size: 1rem;
-      outline: none;
-      transition: all 0.2s ease;
-      margin-bottom: 1.25rem;
-    }
-
-    input:focus {
-      border-color: #38bdf8;
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15), 0 0 15px rgba(56, 189, 248, 0.2);
-    }
-
-    button {
-      width: 100%;
-      background: linear-gradient(135deg, #0284c7, #2563eb);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.55);
-    }
-
-    .error-msg {
-      background: rgba(244, 63, 94, 0.15);
-      border: 1px solid rgba(244, 63, 94, 0.3);
-      color: #fecdd3;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      margin-bottom: 1.25rem;
-      font-size: 0.875rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-  </style>
+  <link rel="stylesheet" href="/static/theme.css">
+  <script>
+    try { if (sessionStorage.getItem('ts-intro-seen')) document.documentElement.classList.add('intro-seen'); } catch (e) {}
+  </script>
 </head>
 <body>
-  <div class="login-card">
-    <div class="brand-logo">
-      <div class="brand-icon">
-        <i class="fa-solid fa-shield-halved"></i>
-      </div>
-      <div class="brand-title">Threat<span>Scout</span></div>
-    </div>
-    
-    <div class="login-subtitle">
-      Yönetici / Güvenlik Analisti Girişi
-    </div>
+  {% include "_backdrop.html" %}
+  {% include "_intro.html" %}
 
-    {% if error %}
-    <div class="error-msg">
-      <i class="fa-solid fa-circle-exclamation"></i> {{ error }}
-    </div>
-    {% endif %}
+  <div id="app">
+    <main class="login-main">
+      <section class="login-card{% if error %} has-error{% endif %}">
+        <div class="login-lock" aria-hidden="true">
+          <svg class="login-lock-svg" viewBox="0 0 120 150">
+            <path class="shackle" d="M32 66 V44 a28 28 0 0 1 56 0 V66" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>
+            <rect x="14" y="64" width="92" height="76" rx="16" fill="rgba(6, 12, 22, 0.92)" stroke="currentColor" stroke-width="3.5"/>
+            <circle cx="60" cy="96" r="8" fill="currentColor"/>
+            <rect x="56" y="98" width="8" height="18" rx="3" fill="currentColor"/>
+          </svg>
+        </div>
 
-    <form method="post" action="/login">
-      <label for="password">Yönetici Parolası</label>
-      <input type="password" id="password" name="password" placeholder="••••••••••••" autofocus required>
-      <button type="submit">
-        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sisteme Giriş Yap
-      </button>
-    </form>
+        <h1 class="login-title">Yönetici girişi</h1>
+        <p class="login-sub">Devam etmek için parolanızı girin.</p>
+
+        {% if error %}
+        <div class="error" role="alert">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <div>{{ error }}</div>
+        </div>
+        {% endif %}
+
+        <form method="post" action="/login" class="login-form">
+          <label for="password">Parola</label>
+          <div class="field">
+            <i class="fa-solid fa-key" aria-hidden="true"></i>
+            <input id="password" type="password" name="password" autocomplete="current-password" placeholder="••••••••••••" required autofocus>
+          </div>
+          <button type="submit" class="btn btn-block">Giriş yap <i class="fa-solid fa-arrow-right"></i></button>
+        </form>
+
+        <p class="login-foot">Parolayı unuttuysanız <code>.env</code> dosyasındaki <code>WEB_PASSWORD</code> satırına bakın.</p>
+      </section>
+    </main>
   </div>
+
+  <script src="/static/app.js" defer></script>
 </body>
 </html>

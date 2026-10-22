@@ -38,4 +38,4 @@ where = ["."]
 include = ["threatscout*"]
 
 [tool.setuptools.package-data]
-threatscout = ["templates/*.html"]
+threatscout = ["templates/*.html", "static/*"]
