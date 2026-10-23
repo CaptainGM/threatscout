@@ -78,7 +78,8 @@ def test_risk_scorer():
         ],
     )
     result = scorer.enrich_report(report)
-    assert result.threat_score == 50.0
+    # 35 motor işaretlediyse 35 * 3 = 105, en fazla 100 puan
+    assert result.threat_score == 100.0
 
 
 def test_greynoise_score():

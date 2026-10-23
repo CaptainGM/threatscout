@@ -4,7 +4,7 @@ import hashlib
 import json
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +76,18 @@ class Store:
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ioc TEXT NOT NULL UNIQUE,
+                    ioc_type TEXT NOT NULL,
+                    interval_hours INTEGER NOT NULL DEFAULT 24,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    last_score REAL,
+                    last_risk TEXT,
+                    last_checked TEXT,
+                    created_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -120,6 +132,39 @@ class Store:
         data = json.loads(row["report_json"])
         data["id"] = row["id"]
         return data
+
+    def stats(self, days: int = 30) -> dict[str, Any]:
+        # Panel için özet: toplam, risk dağılımı, gün gün sayılar, en riskli ve en çok tarananlar
+        since = (datetime.now(timezone.utc) - timedelta(days=days - 1)).date().isoformat()
+        with self._connect() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
+            levels = {
+                row[0]: row[1]
+                for row in conn.execute("SELECT risk_level, COUNT(*) FROM scans GROUP BY risk_level").fetchall()
+            }
+            daily = {
+                row[0]: row[1]
+                for row in conn.execute(
+                    "SELECT substr(created_at, 1, 10) AS day, COUNT(*) FROM scans "
+                    "WHERE substr(created_at, 1, 10) >= ? GROUP BY day",
+                    (since,),
+                ).fetchall()
+            }
+            top = conn.execute(
+                "SELECT id, ioc, ioc_type, threat_score, risk_level, created_at FROM scans "
+                "ORDER BY threat_score DESC, id DESC LIMIT 10"
+            ).fetchall()
+            most = conn.execute(
+                "SELECT ioc, COUNT(*) AS n FROM scans GROUP BY ioc ORDER BY n DESC, ioc LIMIT 5"
+            ).fetchall()
+        return {
+            "total": total,
+            "levels": levels,
+            "daily": daily,
+            "since": since,
+            "top": [dict(r) for r in top],
+            "most": [dict(r) for r in most],
+        }
 
     def create_api_key(self, name: str) -> str:
         raw = "ts_" + secrets.token_urlsafe(24)
@@ -207,3 +252,36 @@ class Store:
                 (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    def add_watch(self, ioc: str, ioc_type: str, interval_hours: int) -> int:
+        # Aynı değer zaten izleniyorsa aralığı güncelle, yeni satır açma
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO watchlist (ioc, ioc_type, interval_hours, enabled, created_at) "
+                "VALUES (?, ?, ?, 1, ?) "
+                "ON CONFLICT(ioc) DO UPDATE SET interval_hours=excluded.interval_hours, enabled=1",
+                (ioc, ioc_type, interval_hours, _now()),
+            )
+            row = conn.execute("SELECT id FROM watchlist WHERE ioc=?", (ioc,)).fetchone()
+        return int(row["id"])
+
+    def list_watch(self) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM watchlist ORDER BY id DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def get_watch(self, watch_id: int) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM watchlist WHERE id=?", (watch_id,)).fetchone()
+        return dict(row) if row else None
+
+    def update_watch(self, watch_id: int, score: float, risk: str, checked_at: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE watchlist SET last_score=?, last_risk=?, last_checked=? WHERE id=?",
+                (score, risk, checked_at, watch_id),
+            )
+
+    def delete_watch(self, watch_id: int) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM watchlist WHERE id=?", (watch_id,))

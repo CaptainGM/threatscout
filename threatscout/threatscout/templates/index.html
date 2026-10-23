@@ -8,7 +8,7 @@
   <h1 class="hero-title">Şüpheli değeri <span class="grad">saniyeler</span> içinde kontrol edin</h1>
   <p class="hero-sub">IP, domain, URL, hash veya e-posta girin. ThreatScout bu değeri birden fazla kaynakta aynı anda sorgular ve 0–100 arası bir risk puanı hesaplar.</p>
 
-  <form id="scan-form" class="command" hx-post="/scan" hx-target="#result" hx-indicator="#busy">
+  <form id="scan-form" class="command" action="/scan" method="post">
     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
     <label for="ioc-input" class="sr-only">Taranacak değer</label>
     <input id="ioc-input" name="ioc" type="text" autocomplete="off" spellcheck="false"

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}İzleme listesi — ThreatScout{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <span class="eyebrow"><i class="fa-solid fa-eye"></i> İzleme</span>
+  <h1 class="page-title">İzleme listesi</h1>
+  <p class="muted">Eklediğiniz değerler seçtiğiniz aralıkla yeniden taranır. Puan belirgin biçimde değişirse ya da risk seviyesi değişirse, ayarlarda tanımlı webhook'a bildirim gönderilir.</p>
+</section>
+
+{% if error %}
+<div class="error" style="margin-bottom: 1rem;">
+  <i class="fa-solid fa-circle-exclamation"></i>
+  <div>{{ error }}</div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-plus"></i> Yeni değer ekle</div>
+  </div>
+  <form method="post" action="/watchlist" class="watch-form">
+    <div class="field-grow">
+      <label for="watch-ioc">Değer</label>
+      <input id="watch-ioc" name="ioc" type="text" placeholder="8.8.8.8 · ornek.com · sha256" autocomplete="off" required>
+    </div>
+    <div class="field-small">
+      <label for="watch-interval">Kontrol aralığı</label>
+      <select id="watch-interval" name="interval_hours">
+        {% for hours, text in intervals %}
+        <option value="{{ hours }}"{% if hours == 24 %} selected{% endif %}>{{ text }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn"><i class="fa-solid fa-eye"></i> İzlemeye al</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-list"></i> İzlenenler</div>
+    <span class="muted">{{ items | length }} değer</span>
+  </div>
+  {% if items %}
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Değer</th>
+          <th>Tür</th>
+          <th>Son puan</th>
+          <th>Risk</th>
+          <th>Son kontrol</th>
+          <th>Aralık</th>
+          <th style="text-align: right;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td class="mono">{{ it.ioc }}</td>
+          <td><span class="tag">{{ it.ioc_type }}</span></td>
+          <td class="mono">{% if it.score is not none %}{{ it.score }}<span class="muted">/100</span>{% else %}—{% endif %}</td>
+          <td>{{ it.risk_label }}</td>
+          <td class="muted">{{ it.checked }}</td>
+          <td class="muted">{{ it.interval_hours }} saat</td>
+          <td style="text-align: right; white-space: nowrap;">
+            <form method="post" action="/watchlist/{{ it.id }}/check" style="display: inline;">
+              <button type="submit" class="btn ghost btn-sm"><i class="fa-solid fa-rotate"></i> Şimdi tara</button>
+            </form>
+            <form method="post" action="/watchlist/{{ it.id }}/delete" style="display: inline;">
+              <button type="submit" class="btn ghost btn-sm"><i class="fa-solid fa-trash"></i> Kaldır</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">Henüz izlenen değer yok. Yukarıdan bir değer ekleyin.</p>
+  {% endif %}
+</div>
+{% endblock %}

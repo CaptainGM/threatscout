@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Panel — ThreatScout{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <span class="eyebrow"><i class="fa-solid fa-chart-column"></i> Panel</span>
+  <h1 class="page-title">Genel bakış</h1>
+  <p class="muted">Yaptığınız taramaların özeti. Veriler bu bilgisayardaki geçmişten geliyor.</p>
+</section>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat-label">Toplam tarama</div>
+    <div class="stat-value">{{ view.total }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Son 30 gün</div>
+    <div class="stat-value">{{ view.last30 }}</div>
+  </div>
+  <div class="stat stat-danger">
+    <div class="stat-label">Yüksek ve kritik</div>
+    <div class="stat-value">{{ view.risky }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Yetersiz veri</div>
+    <div class="stat-value">{{ view.unknown }}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-calendar-days"></i> Son 30 gün</div>
+      <span class="muted">En yüksek gün: {{ view.peak }}</span>
+    </div>
+    <svg class="chart" viewBox="0 0 600 170" role="img" aria-label="Son 30 gündeki tarama sayıları">
+      {% for b in view.bars %}
+      <rect class="bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="3">
+        <title>{{ b.day }}: {{ b.count }} tarama</title>
+      </rect>
+      {% endfor %}
+      <line class="axis" x1="0" y1="150" x2="600" y2="150"/>
+    </svg>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-shield-halved"></i> Risk dağılımı</div>
+      <span class="muted">{{ view.total }} tarama</span>
+    </div>
+    {% for lvl in view.levels %}
+    <div class="level-row">
+      <span class="level-name">{{ lvl.label }}</span>
+      <div class="level-track"><span style="width: {{ lvl.pct }}%; background: {{ lvl.color }};"></span></div>
+      <span class="level-count">{{ lvl.count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-triangle-exclamation"></i> En riskli taramalar</div>
+    </div>
+    {% if view.top %}
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Değer</th><th>Puan</th><th>Risk</th></tr></thead>
+        <tbody>
+          {% for s in view.top %}
+          <tr>
+            <td><a href="/history/{{ s.id }}" class="mono-link">{{ s.ioc }}</a></td>
+            <td class="mono">{{ s.threat_score }}</td>
+            <td>{{ s.risk_level }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">Henüz tarama yok.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-rotate"></i> En çok taranan değerler</div>
+    </div>
+    {% if view.most %}
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Değer</th><th>Tarama sayısı</th></tr></thead>
+        <tbody>
+          {% for m in view.most %}
+          <tr>
+            <td class="mono">{{ m.ioc }}</td>
+            <td class="mono">{{ m.n }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">Henüz tarama yok.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -10,6 +10,9 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
+# Anahtarı girilmemiş bir kaynağın hata metni (arayüz bu metne bakarak "anahtar yok" yazar)
+DISABLED_ERROR = "API anahtarı eklenmemiş"
+
 _HASH = re.compile(r"^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$|^[a-fA-F0-9]{64}$")
 _DOMAIN = re.compile(
     r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"

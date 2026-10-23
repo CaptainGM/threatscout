@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script>
     // Giriş animasyonu bu tarayıcı oturumunda zaten oynadıysa tekrar gösterme
     try { if (sessionStorage.getItem('ts-intro-seen')) document.documentElement.classList.add('intro-seen'); } catch (e) {}
@@ -32,6 +33,8 @@
         <a href="/" {% if request.url.path == "/" %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-satellite-dish"></i> Tarama</a>
         <a href="/history" {% if "/history" in request.url.path %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-clock-rotate-left"></i> Geçmiş</a>
         <a href="/settings" {% if "/settings" in request.url.path %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-sliders"></i> Ayarlar</a>
+        <a href="/panel" {% if request.url.path == "/panel" %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-chart-column"></i> Panel</a>
+        <a href="/watchlist" {% if request.url.path == "/watchlist" %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-eye"></i> İzleme</a>
         <a href="/docs" target="_blank" rel="noopener"><i class="fa-solid fa-code"></i> REST API</a>
       </nav>
 
@@ -52,6 +55,7 @@
     <footer>ThreatScout · Tehdit istihbaratı ve IOC zenginleştirme</footer>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="/static/app.js" defer></script>
 </body>
 </html>

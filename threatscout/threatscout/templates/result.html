@@ -2,8 +2,8 @@
 <div class="error" style="margin-top: 1.5rem;">
   <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;"></i>
   <div>
-    <strong>Tarama Hatası:</strong> {{ error }}
-    <div style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.2rem;">Lütfen girdiğiniz değerin geçerli bir IP, domain, URL veya hash olduğundan emin olun.</div>
+    <strong>Tarama hatası:</strong> {{ error }}
+    <div class="muted" style="margin-top: 0.2rem;">Lütfen girdiğiniz değerin geçerli bir IP, domain, URL veya hash olduğundan emin olun.</div>
   </div>
 </div>
 {% elif report %}
@@ -35,7 +35,6 @@
   {% set theme_color = '#64748b' %}
   {% set icon_class = 'fa-circle-question' %}
   {% set badge_class = 'badge-unknown' %}
-  {% set badge_label = 'YETERSİZ VERİ' %}
   {% set status_desc = 'YETERSİZ VERİ. Bu değer için hiçbir kaynaktan skor alınamadı. Bu sonuç "temiz" anlamına GELMEZ. Anahtarı olan bir kaynak eklerseniz (Ayarlar veya .env) kapsam artar.' %}
 {% else %}
   {% set theme_color = '#10b981' %}
@@ -44,267 +43,180 @@
   {% set status_desc = 'GÜVENLİ / TEMİZ. Skor veren kaynakların hiçbirinde zararlı kayıt bulunmadı.' %}
 {% endif %}
 
-<div class="card" style="border-left: 5px solid {{ theme_color }}; box-shadow: 0 10px 35px -5px rgba(0,0,0,0.6); margin-top: 1.5rem;">
-
-  <!-- ÜST ÖZET BAŞLIĞI -->
-  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 1.25rem;">
+<div class="card result-card" style="border-left: 4px solid {{ theme_color }}; margin-top: 1.5rem;">
+  <div class="result-head">
     <div>
-      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
-        <span class="tag" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); border-color: rgba(56, 189, 248, 0.3);">
-          {{ report.ioc_type.value | upper }} ANALİZİ
-        </span>
-        {% if report.id %}
-          <span style="font-size: 0.8rem; color: var(--text-dim);">Kayıt #{{ report.id }}</span>
-        {% endif %}
-      </div>
-      <h2 style="font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; color: #fff; word-break: break-all;">
-        {{ report.ioc }}
-      </h2>
+      <span class="tag" style="color: var(--accent); border-color: rgba(34, 211, 238, 0.3);">{{ report.ioc_type.value | upper }} analizi</span>
+      {% if report.id %}<span class="muted" style="margin-left: 0.5rem;">Kayıt #{{ report.id }}</span>{% endif %}
+      <div class="result-ioc">{{ report.ioc }}</div>
     </div>
 
-    <!-- RİSK KUTUSU & SKOR -->
-    <div style="display: flex; align-items: center; gap: 1.25rem;">
-      <div style="text-align: right;">
-        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700; letter-spacing: 0.05em;">Hesaplanan Tehdit Skoru</div>
-        <div style="font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 800; color: {{ theme_color }}; line-height: 1.1;">
-          {% if r_level == 'unknown' %}—{% else %}{{ report.threat_score }}<span style="font-size: 1rem; color: var(--text-dim); font-weight: 400;">/100</span>{% endif %}
-        </div>
+    <div class="gauge-wrap">
+      <svg class="gauge" viewBox="0 0 200 110" aria-hidden="true">
+        <path class="gauge-track" d="M20 100 A80 80 0 0 1 180 100"/>
+        <path class="gauge-value{{ ' is-unknown' if gauge.unknown }}" d="M20 100 A80 80 0 0 1 180 100" style="--len: {{ gauge.length }}; --off: {{ gauge.offset }}; stroke: {{ theme_color }};"/>
+      </svg>
+      <div class="gauge-score" style="color: {{ theme_color }};">
+        {% if gauge.unknown %}—{% else %}{{ report.threat_score }}<small>/100</small>{% endif %}
       </div>
-      <div class="badge {{ badge_class }}" style="font-size: 0.95rem; padding: 0.6rem 1.1rem;">
-        <i class="fa-solid {{ icon_class }}"></i> {{ badge_label }}
-      </div>
+      <span class="badge {{ badge_class }}"><i class="fa-solid {{ icon_class }}"></i> {{ badge_label }}</span>
     </div>
   </div>
 
-  <!-- KULLANICI DOSTU DURUM AÇIKLAMASI -->
-  <div style="background: rgba(13, 21, 39, 0.6); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; margin: 1.25rem 0 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
-    <i class="fa-solid fa-circle-info" style="color: {{ theme_color }}; font-size: 1.25rem;"></i>
-    <div style="font-size: 0.875rem; color: var(--text);">
-      <strong>Sonuç Değerlendirmesi:</strong> {{ status_desc }}
+  <div class="status-line" style="border-left-color: {{ theme_color }};">
+    <i class="fa-solid fa-circle-info" style="color: {{ theme_color }}; font-size: 1.1rem; margin-top: 0.1rem;"></i>
+    <div>
+      <strong>Sonuç:</strong> {{ status_desc }}
+      {% if r_level == 'clean' and coverage.answered <= 3 %}
+      <div class="panel-note">Yalnızca {{ coverage.answered }} kaynak veri döndürdü. Temiz görünmesi tam bir güvence anlamına gelmez.</div>
+      {% endif %}
     </div>
   </div>
 
-  <!-- KAÇ KAYNAK VERİ DÖNDÜRDÜ -->
-  <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-    Veri döndüren kaynak sayısı: <strong>{{ report.providers | selectattr('success') | list | length }}</strong> / {{ report.providers | length }}
+  <div class="coverage">
+    <div class="coverage-bar" role="img" aria-label="{{ coverage.answered }} / {{ coverage.total }} kaynak veri döndürdü">
+      {% for seg in coverage.segments %}<span class="seg seg-{{ seg.state }}" title="{{ seg.title }}"></span>{% endfor %}
+    </div>
+    <div class="coverage-text">Veri döndüren kaynak: <strong>{{ coverage.answered }}</strong> / {{ coverage.total }}. Her çubuğun üzerine gelerek kaynağın durumunu görebilirsiniz.</div>
   </div>
 
-  <!-- RAPOR İNDİRME / KAYIT BAĞLANTILARI -->
   {% if report.id %}
-  <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-    <a href="/history/{{ report.id }}/pdf" class="btn" style="background: linear-gradient(135deg, #0284c7, #2563eb); font-size: 0.85rem; padding: 0.5rem 1rem;">
-      <i class="fa-solid fa-file-pdf"></i> Resmi PDF Raporunu İndir
-    </a>
-    <a href="/history/{{ report.id }}" class="btn ghost btn-sm" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-      <i class="fa-solid fa-link"></i> Kalıcı Bağlantı & Paylaş
-    </a>
+  <div class="result-actions">
+    <a href="/history/{{ report.id }}/pdf" class="btn btn-sm"><i class="fa-solid fa-file-pdf"></i> PDF raporu</a>
+    <a href="/history/{{ report.id }}" class="btn ghost btn-sm"><i class="fa-solid fa-link"></i> Kalıcı bağlantı</a>
   </div>
   {% endif %}
 
-  <!-- İKİLİ GRID: COĞRAFİ KONUM VE WHOIS BİLGİSİ -->
-  {% if report.geo or report.whois %}
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-
-    {% if report.geo %}
-    <div style="background: rgba(9, 14, 26, 0.7); border: 1px solid var(--line); border-radius: 10px; padding: 1rem;">
-      <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">
-        <i class="fa-solid fa-location-dot" style="color: var(--accent);"></i> Coğrafi Konum & Şebeke (ISP)
-      </div>
-      <div style="font-size: 0.95rem; font-weight: 600; color: #fff;">
-        {{ report.geo.get("country", "") }} {% if report.geo.get("city") %}— {{ report.geo.get("city") }}{% endif %}
-      </div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-        Sağlayıcı (ISP): <strong>{{ report.geo.get("isp") or "Bilinmiyor" }}</strong>
-      </div>
+  {% if map or graph %}
+  <div class="result-grid">
+    {% if map %}
+    <div class="panel-box">
+      <div class="panel-title"><i class="fa-solid fa-location-dot"></i> Konum</div>
+      <div id="map-{{ report.id or 0 }}" class="map-box"></div>
+      <div class="panel-note">{{ report.geo.get("city") or "" }} {{ report.geo.get("country") or "" }} · {{ report.geo.get("isp") or "" }}</div>
     </div>
     {% endif %}
-
-    {% if report.whois %}
-    <div style="background: rgba(9, 14, 26, 0.7); border: 1px solid var(--line); border-radius: 10px; padding: 1rem;">
-      <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">
-        <i class="fa-solid fa-id-card" style="color: var(--accent-secondary);"></i> Tescil & WHOIS Kaydı
-      </div>
-      <div style="font-size: 0.95rem; font-weight: 600; color: #fff;">
-        {{ report.whois.get("name") or report.whois.get("handle") or "Gizli / Bilgi Yok" }}
-      </div>
-      {% if report.whois.get("mailbox_domain") %}
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-        Yetkili İletişim: <strong>{{ report.whois.mailbox_domain }}</strong>
-      </div>
-      {% endif %}
-      {% if report.whois.get("created") %}
-      <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem;">
-        Kayıt Tarihi: {{ report.whois.get("created") }}
-      </div>
-      {% endif %}
+    {% if graph %}
+    <div class="panel-box">
+      <div class="panel-title"><i class="fa-solid fa-diagram-project"></i> İlişkiler</div>
+      <svg class="graph" viewBox="0 0 320 270" role="img" aria-label="İlişki grafiği">
+        {% for n in graph.nodes %}
+        <line class="edge" x1="{{ graph.cx }}" y1="{{ graph.cy }}" x2="{{ n.x }}" y2="{{ n.y }}"/>
+        {% endfor %}
+        <circle class="node-center" cx="{{ graph.cx }}" cy="{{ graph.cy }}" r="30"/>
+        <text class="node-center-text" x="{{ graph.cx }}" y="{{ graph.cy + 4 }}" text-anchor="middle">{{ graph.center }}</text>
+        {% for n in graph.nodes %}
+        <circle class="node node-{{ n.kind }}" cx="{{ n.x }}" cy="{{ n.y }}" r="20"/>
+        <text class="node-letter" x="{{ n.x }}" y="{{ n.y + 4 }}" text-anchor="middle">{{ n.letter }}</text>
+        <text class="node-caption" x="{{ n.x }}" y="{{ n.y + 36 }}" text-anchor="middle">{{ n.caption }}</text>
+        <text class="node-kind" x="{{ n.x }}" y="{{ n.y + 48 }}" text-anchor="middle">{{ n.kind_label }}</text>
+        {% endfor %}
+      </svg>
     </div>
     {% endif %}
-
   </div>
   {% endif %}
 
-  <!-- SAĞLAYICI (PROVIDER) SONUÇLARI TABLOSU -->
-  <div style="margin-bottom: 1.5rem;">
-    <div style="font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-      <i class="fa-solid fa-server" style="color: var(--accent);"></i>
-      İstihbarat Servislerinin Yanıtları (Providers)
+  <div class="section-title"><i class="fa-solid fa-server"></i> İstihbarat kaynakları</div>
+  <div class="live-grid">
+    {% for r in rows %}
+    <div class="live-card is-{{ r.state }}{{ ' is-cached' if r.cached }}">
+      <div class="live-head">
+        <span class="live-name">{{ r.title }}</span>
+        <span class="live-state">{% if r.state == 'ok' %}Veri alındı{% elif r.state == 'off' %}Anahtar yok{% else %}Hata{% endif %}</span>
+      </div>
+      <div class="live-detail">{{ r.detail }}</div>
+      {% if r.state == 'fail' %}<div class="live-error">{{ r.error }}</div>{% endif %}
+      <div class="live-foot">{{ 'Önbellekten' if r.cached else 'Canlı sorgu' }}</div>
     </div>
-
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Güvenlik Servisi</th>
-            <th>Sorgu Durumu</th>
-            <th>Önbellek (Cache)</th>
-            <th>Detay</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in report.providers %}
-          <tr>
-            <td style="font-weight: 600; color: #fff;">
-              {{ p.provider | title }}
-            </td>
-            <td>
-              {% if p.success %}
-                <span style="color: var(--emerald); font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
-                  <i class="fa-solid fa-circle-check"></i> Başarılı (Veri Alındı)
-                </span>
-              {% else %}
-                <span style="color: var(--rose); font-size: 0.85rem;">
-                  <i class="fa-solid fa-circle-xmark"></i> {{ p.error or "Hata" }}
-                </span>
-              {% endif %}
-            </td>
-            <td>
-              {% if p.cached %}
-                <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3);">
-                  <i class="fa-solid fa-database"></i> Önbellekten
-                </span>
-              {% else %}
-                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3);">
-                  <i class="fa-solid fa-bolt"></i> Canlı Sorgu
-                </span>
-              {% endif %}
-            </td>
-            <td style="font-size: 0.85rem; color: var(--text-muted);">
-              {% set n = p.normalized %}
-              {% if not p.success or not n %}
-                —
-              {% elif p.provider == 'virustotal' %}
-                <strong>{{ n.malicious }} / {{ n.total_engines }}</strong> motor zararlı dedi
-              {% elif p.provider == 'abuseipdb' %}
-                Kötüye kullanım skoru: <strong>%{{ n.abuse_confidence }}</strong> ({{ n.total_reports }} şikayet)
-              {% elif p.provider == 'shodan' %}
-                Açık portlar: <code>{{ n.open_ports | join(", ") if n.open_ports else "yok" }}</code>
-              {% elif p.provider == 'otx' %}
-                {{ n.pulse_count }} tehdit raporunda geçiyor
-              {% elif p.provider == 'greynoise' %}
-                Sınıf: <strong>{{ n.classification }}</strong>
-              {% elif p.provider == 'urlhaus' %}
-                {{ "Zararlı listesinde" if n.listed else "Listede yok" }}
-              {% elif p.provider == 'misp' %}
-                {{ n.event_count }} olay bulundu
-              {% else %}
-                —
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    {% endfor %}
   </div>
 
-  <!-- RİSK DAĞILIMI (AĞIRLIKLAR) -->
   {% if breakdown_rows %}
-  <div style="margin-bottom: 1.5rem;">
-    <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-      <i class="fa-solid fa-chart-pie" style="color: var(--accent-secondary);"></i>
-      Risk Skoru Ağırlık Dağılımı
-    </div>
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Bileşen</th>
-            <th>Sağlayıcı Skoru</th>
-            <th>Formüldeki Ağırlığı</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in breakdown_rows %}
-          <tr>
-            <td style="font-weight: 600;">{{ row.name }}</td>
-            <td style="font-family: 'JetBrains Mono', monospace;">{{ "%.1f"|format(row.score) }} / 100</td>
-            <td>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; max-width: 120px;">
-                  <div style="height: 100%; width: {{ (row.weight*100)|round(0) }}%; background: var(--accent);"></div>
-                </div>
-                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">%{{ (row.weight*100)|round(0) }}</span>
+  <div class="section-title"><i class="fa-solid fa-chart-pie"></i> Risk puanı dağılımı</div>
+  <div class="table-container" style="margin-top: 0.7rem;">
+    <table>
+      <thead>
+        <tr>
+          <th>Bileşen</th>
+          <th>Kaynak puanı</th>
+          <th>Formüldeki ağırlık</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in breakdown_rows %}
+        <tr>
+          <td style="font-weight: 600;">{{ row.name }}</td>
+          <td style="font-family: var(--font-mono);">{{ "%.1f"|format(row.score) }} / 100</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; max-width: 120px;">
+                <div style="height: 100%; width: {{ (row.weight*100)|round(0) }}%; background: var(--accent);"></div>
               </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+              <span style="font-family: var(--font-mono); font-size: 0.85rem;">%{{ (row.weight*100)|round(0) }}</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
   {% endif %}
 
-  <!-- CVE GÜVENLİK AÇIKLARI -->
   {% if report.cves %}
-  <div style="margin-bottom: 1.5rem;">
-    <div style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-      <i class="fa-solid fa-bug" style="color: var(--rose);"></i>
-      İlişkili Güvenlik Zaafiyetleri (CVE / NVD)
-    </div>
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>CVE Numarası</th>
-            <th>CVSS Skoru</th>
-            <th>Açıklama / Zaafiyet Özeti</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for c in report.cves %}
-          <tr>
-            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--rose);">
-              {{ c.id }}
-            </td>
-            <td>
-              <span class="badge badge-high">{{ c.score or "N/A" }} {{ c.severity or "" }}</span>
-            </td>
-            <td style="font-size: 0.85rem; color: var(--text-muted);">
-              {{ c.summary }}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="section-title"><i class="fa-solid fa-bug" style="color: var(--rose);"></i> İlişkili güvenlik açıkları (CVE / NVD)</div>
+  <div class="table-container" style="margin-top: 0.7rem;">
+    <table>
+      <thead>
+        <tr>
+          <th>CVE</th>
+          <th>CVSS</th>
+          <th>Özet</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in report.cves %}
+        <tr>
+          <td style="font-family: var(--font-mono); font-weight: 700; color: var(--rose);">{{ c.id }}</td>
+          <td><span class="badge badge-high">{{ c.score or "N/A" }} {{ c.severity or "" }}</span></td>
+          <td style="font-size: 0.85rem; color: var(--text-muted);">{{ c.summary }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
   {% endif %}
 
-  <!-- ETİKETLER (TAGS) -->
   {% if report.tags %}
-  <div>
-    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">
-      <i class="fa-solid fa-tags"></i> Tespit Edilen Tehdit Etiketleri:
-    </div>
-    <div>
-      {% for t in report.tags %}
-        <span class="tag" style="background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.25); color: #fff;">
-          # {{ t }}
-        </span>
-      {% endfor %}
-    </div>
+  <div class="section-title"><i class="fa-solid fa-tags"></i> Tehdit etiketleri</div>
+  <div style="margin-top: 0.6rem;">
+    {% for t in report.tags %}<span class="tag">{{ t }}</span>{% endfor %}
   </div>
   {% endif %}
-
 </div>
+
+{% if map %}
+<script>
+  (function () {
+    var attempts = 0;
+    function init() {
+      var el = document.getElementById("map-{{ report.id or 0 }}");
+      if (!el) return;
+      if (!window.L) {
+        attempts += 1;
+        if (attempts < 50) setTimeout(init, 200);
+        return;
+      }
+      var m = L.map(el, { scrollWheelZoom: false }).setView([{{ map.lat }}, {{ map.lon }}], 5);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap katkıda bulunanlar"
+      }).addTo(m);
+      L.circleMarker([{{ map.lat }}, {{ map.lon }}], {
+        radius: 8, color: "#22d3ee", weight: 2, fillColor: "#22d3ee", fillOpacity: 0.35
+      }).addTo(m);
+    }
+    init();
+  })();
+</script>
+{% endif %}
 {% endif %}

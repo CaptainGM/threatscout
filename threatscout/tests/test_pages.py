@@ -59,4 +59,4 @@ def test_detail_column_shows_provider_data(make_engine, monkeypatch):
     monkeypatch.setattr(api, "engine", engine)
     client = TestClient(api.app)
     detail = client.get(f"/history/{scan_id}")
-    assert "3 / 70</strong> motor" in detail.text
+    assert "3 / 70 motor zararlı dedi" in detail.text

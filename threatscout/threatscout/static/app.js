@@ -1,8 +1,10 @@
-// ThreatScout ortak betik: giriş animasyonu, arka plan noktaları ve htmx hata gösterimi.
+// ThreatScout ortak betik: giriş animasyonu, arka plan noktaları, canlı tarama ve htmx hata gösterimi.
 (function () {
   'use strict';
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Sunucudaki DISABLED_ERROR ile birebir aynı olmalı
+  var DISABLED_ERROR = 'API anahtarı eklenmemiş';
 
   // htmx hata cevaplarını (400, 429 vb.) da sonuç alanına yazdır
   document.body.addEventListener('htmx:beforeSwap', function (evt) {
@@ -12,7 +14,126 @@
     }
   });
 
-  // Giriş animasyonu: bir tarayıcı oturumunda bir kez oynar, Atla ya da Esc ile geçilir
+  // ---- Canlı tarama: her kaynak bitince kendi kartı görünür ----
+
+  // Sunucudan gelen HTML içindeki betikleri (harita kurulumu gibi) yeniden çalıştırır
+  function runScripts(root) {
+    root.querySelectorAll('script').forEach(function (old) {
+      var fresh = document.createElement('script');
+      fresh.textContent = old.textContent;
+      old.parentNode.replaceChild(fresh, old);
+    });
+  }
+
+  function addLiveCard(live, data, startedAt) {
+    var off = !data.ok && data.error === DISABLED_ERROR;
+    var card = document.createElement('div');
+    card.className = 'live-card ' + (data.ok ? 'is-ok' : (off ? 'is-off' : 'is-fail')) + (data.cached ? ' is-cached' : '');
+
+    var head = document.createElement('div');
+    head.className = 'live-head';
+    var name = document.createElement('span');
+    name.className = 'live-name';
+    name.textContent = data.title;
+    var state = document.createElement('span');
+    state.className = 'live-state';
+    state.textContent = data.ok ? 'Veri alındı' : (off ? 'Anahtar yok' : 'Hata');
+    head.appendChild(name);
+    head.appendChild(state);
+    card.appendChild(head);
+
+    var detail = document.createElement('div');
+    detail.className = 'live-detail';
+    detail.textContent = data.detail;
+    card.appendChild(detail);
+
+    if (!data.ok && !off) {
+      var error = document.createElement('div');
+      error.className = 'live-error';
+      error.textContent = data.error;
+      card.appendChild(error);
+    }
+
+    var foot = document.createElement('div');
+    foot.className = 'live-foot';
+    foot.textContent = (data.cached ? 'Önbellekten' : 'Canlı sorgu') + ' · ' + (Date.now() - startedAt) + ' ms';
+    card.appendChild(foot);
+
+    live.appendChild(card);
+  }
+
+  // Sunucu-gönderimli olay akışını ("event:" ve "data:" satırları) okur
+  function readEvents(body, onEvent) {
+    var reader = body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    function pump() {
+      return reader.read().then(function (chunk) {
+        if (chunk.done) return;
+        buffer += decoder.decode(chunk.value, { stream: true });
+        var parts = buffer.split('\n\n');
+        buffer = parts.pop();
+        parts.forEach(function (part) {
+          var name = 'message';
+          var data = '';
+          part.split('\n').forEach(function (line) {
+            if (line.indexOf('event: ') === 0) name = line.slice(7);
+            else if (line.indexOf('data: ') === 0) data += line.slice(6);
+          });
+          if (data) onEvent(name, JSON.parse(data));
+        });
+        return pump();
+      });
+    }
+    return pump();
+  }
+
+  function runStreamingScan(form) {
+    var result = document.getElementById('result');
+    var busy = document.getElementById('busy');
+    var button = form.querySelector('button[type="submit"]');
+    var startedAt = Date.now();
+
+    if (busy) busy.classList.add('is-busy');
+    if (button) button.disabled = true;
+    result.innerHTML = '<div class="live-grid" id="live"></div>';
+    var live = document.getElementById('live');
+
+    fetch('/scan/stream', {
+      method: 'POST',
+      body: new FormData(form),
+      headers: { 'Accept': 'text/event-stream' }
+    }).then(function (response) {
+      if (!response.ok) {
+        return response.text().then(function (html) { result.innerHTML = html; });
+      }
+      return readEvents(response.body, function (name, data) {
+        if (name === 'provider') {
+          addLiveCard(live, data, startedAt);
+        } else if (name === 'report') {
+          result.innerHTML = data.html;
+          runScripts(result);
+        }
+      });
+    }).catch(function () {
+      result.innerHTML = '<div class="error"><i class="fa-solid fa-triangle-exclamation"></i><div>Tarama sırasında bağlantı kesildi. Lütfen tekrar deneyin.</div></div>';
+    }).finally(function () {
+      if (busy) busy.classList.remove('is-busy');
+      if (button) button.disabled = false;
+    });
+  }
+
+  function setupScanForm() {
+    var form = document.getElementById('scan-form');
+    if (!form) return;
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      runStreamingScan(form);
+    });
+  }
+
+  // ---- Giriş animasyonu: bir tarayıcı sekmesinde bir kez oynar, Atla ya da Esc ile geçilir ----
   function startIntro() {
     var intro = document.getElementById('intro');
     if (!intro) return;
@@ -48,7 +169,7 @@
     window.setTimeout(finish, 4900);
   }
 
-  // Arka plandaki birbirine bağlı noktalar (hareket azaltma açıksa çizilmez)
+  // ---- Arka plan noktaları (hareket azaltma açıksa çizilmez) ----
   function startDots() {
     var canvas = document.getElementById('cyber-canvas');
     if (!canvas) return;
@@ -114,6 +235,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     startIntro();
     startDots();
+    setupScanForm();
   });
 })();
 

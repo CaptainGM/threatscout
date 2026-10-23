@@ -84,8 +84,10 @@ class RiskScorer:
             n = r.normalized
             name = r.provider.lower()
             if name == "virustotal":
-                total = n.get("total_engines", 0)
-                scores["virustotal"] = (n.get("malicious", 0) / total * 100) if total else 0
+                # Tek motorun işaretlemesi çoğu zaman yanlış alarmdır. En az 2 motor ister,
+                # sonra her motor 3 puan ekler (27 motor ve üzeri 100 puan eder).
+                malicious = int(n.get("malicious", 0) or 0)
+                scores["virustotal"] = min(100, malicious * 3) if malicious >= 2 else 0
             elif name == "abuseipdb":
                 scores["abuseipdb"] = float(n.get("abuse_confidence", 0))
             elif name == "shodan":
@@ -176,29 +178,40 @@ class ThreatScoutEngine:
     async def close(self) -> None:
         await asyncio.gather(*[p.close() for p in self.providers], self.cache.close())
 
-    async def enrich(
+    async def enrich_stream(
         self,
         ioc: str,
         ioc_type: IOCType | None = None,
         use_cache: bool = True,
         persist: bool = True,
         notify: bool = True,
-    ) -> EnrichmentReport:
+    ):
+        # Her kaynak cevap verdiğinde ("provider", sonuç), en sonda ("report", rapor) olayı üretilir
         ioc = ioc.strip()
         detected = ioc_type or detect_ioc_type(ioc)
         if detected == IOCType.UNKNOWN:
-            return EnrichmentReport(ioc=ioc, ioc_type=IOCType.UNKNOWN, risk_level=RiskLevel.UNKNOWN)
+            yield "report", EnrichmentReport(
+                ioc=ioc, ioc_type=IOCType.UNKNOWN, risk_level=RiskLevel.UNKNOWN
+            )
+            return
 
         active = [p for p in self.providers if p.supports(detected)]
-        results = await asyncio.gather(
-            *[self._query(p, ioc, detected, use_cache) for p in active]
-        )
+        tasks = [asyncio.ensure_future(self._query(p, ioc, detected, use_cache)) for p in active]
+        results: list[ProviderResult] = []
+        for finished in asyncio.as_completed(tasks):
+            result = await finished
+            results.append(result)
+            yield "provider", result
+
+        # Kaynaklar cevap sırasına göre gelir; raporda her zaman aynı sırayla dursun
+        order = {p.name: index for index, p in enumerate(self.providers)}
+        results.sort(key=lambda r: order.get(r.provider, len(order)))
         successful = [r for r in results if r.success]
 
         report = EnrichmentReport(
             ioc=ioc,
             ioc_type=detected,
-            providers=list(results),
+            providers=results,
             cached=bool(successful) and all(r.cached for r in successful),
         )
         self._aggregate(report)
@@ -208,6 +221,20 @@ class ThreatScoutEngine:
             await asyncio.to_thread(self.store.save_scan, report)
         if persist and notify:
             await self._notify(report)
+        yield "report", report
+
+    async def enrich(
+        self,
+        ioc: str,
+        ioc_type: IOCType | None = None,
+        use_cache: bool = True,
+        persist: bool = True,
+        notify: bool = True,
+    ) -> EnrichmentReport:
+        report = None
+        async for kind, value in self.enrich_stream(ioc, ioc_type, use_cache, persist, notify):
+            if kind == "report":
+                report = value
         return report
 
     async def _query(

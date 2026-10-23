@@ -7,7 +7,7 @@ from urllib.parse import quote, urlparse
 
 import httpx
 
-from threatscout.models import IOCType, ProviderResult
+from threatscout.models import DISABLED_ERROR, IOCType, ProviderResult
 
 
 def _skipped() -> dict[str, Any]:
@@ -16,7 +16,7 @@ def _skipped() -> dict[str, Any]:
 
 def _http_message(code: int) -> str:
     if code in (401, 403):
-        return f"Anahtar gecersiz ya da yetkisiz ({code})"
+        return f"Anahtar geçersiz ya da bu sorgu için yetki yok ({code})"
     if code == 429:
         return "Istek limiti doldu (429)"
     return f"HTTP {code}"
@@ -47,7 +47,7 @@ class BaseProvider(ABC):
 
     async def analyze(self, ioc: str, ioc_type: IOCType) -> ProviderResult:
         if not self.enabled:
-            return ProviderResult(provider=self.name, success=False, error="API anahtari eklenmemis")
+            return ProviderResult(provider=self.name, success=False, error=DISABLED_ERROR)
         try:
             handlers = {
                 IOCType.IP: self.analyze_ip,

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi import Limiter
@@ -17,7 +20,8 @@ from threatscout.config import get_settings
 from threatscout.engine import ThreatScoutEngine
 from threatscout.models import EnrichmentReport, IOCType, detect_ioc_type
 from threatscout.pdf import render_pdf
-from threatscout.report import RISK_COLORS, breakdown_rows, render_html
+from threatscout.report import RISK_COLORS, breakdown_rows, panel_view, provider_row, render_html, result_context
+from threatscout.watch import check_item, watch_loop, watch_view
 
 settings = get_settings()
 limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit])
@@ -44,7 +48,10 @@ PROVIDER_INFO = {
 async def lifespan(app: FastAPI):
     global engine
     engine = ThreatScoutEngine()
+    # Arka planda izleme listesini kontrol eden görev; uygulama kapanınca iptal edilir
+    watcher = asyncio.create_task(watch_loop(engine))
     yield
+    watcher.cancel()
     if engine:
         await engine.close()
 
@@ -183,13 +190,40 @@ async def web_scan(
     return templates.TemplateResponse(
         request,
         "result.html",
-        {
-            "report": report,
-            "breakdown_rows": breakdown_rows(report),
-            "risk_color": RISK_COLORS.get(report.risk_level, "#6b7280"),
-            "error": None,
-        },
+        result_context(report),
     )
+
+
+def sse_event(name: str, payload: dict) -> str:
+    # Tarayıcıya tek bir olay: "event:" ve "data:" satırları
+    return f"event: {name}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+@app.post("/scan/stream")
+@limiter.limit(settings.rate_limit)
+async def scan_stream(
+    request: Request,
+    ioc: str = Form(...),
+    no_cache: bool = Form(False),
+    _: None = Depends(require_web),
+):
+    # Her kaynak cevap verdikçe tarayıcıya bir olay gider; en sonda tam sonuç kartı gelir
+    eng = _engine()
+    ioc = ioc.strip()
+    ioc_type = detect_ioc_type(ioc)
+    if ioc_type == IOCType.UNKNOWN:
+        html = templates.get_template("result.html").render({"error": "Gecersiz IOC", "report": None})
+        return HTMLResponse(html, status_code=400)
+
+    async def events():
+        async for kind, value in eng.enrich_stream(ioc, ioc_type=ioc_type, use_cache=not no_cache):
+            if kind == "provider":
+                yield sse_event("provider", provider_row(value))
+            else:
+                html = templates.get_template("result.html").render(result_context(value))
+                yield sse_event("report", {"html": html})
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
 @app.post("/batch", response_class=HTMLResponse)
@@ -230,11 +264,7 @@ async def history_detail(request: Request, scan_id: int, _: None = Depends(requi
     return templates.TemplateResponse(
         request,
         "history_detail.html",
-        {
-            "report": report,
-            "breakdown_rows": breakdown_rows(report),
-            "risk_color": RISK_COLORS.get(report.risk_level, "#6b7280"),
-        },
+        result_context(report),
     )
 
 
@@ -364,6 +394,57 @@ async def api_history_pdf(scan_id: int, _: None = Depends(require_api)):
 async def html_report(request: Request, ioc: str, use_cache: bool = True, _: None = Depends(require_api)):
     report = await _engine().enrich(ioc, use_cache=use_cache)
     return HTMLResponse(render_html(report))
+
+
+@app.get("/panel", response_class=HTMLResponse)
+async def panel_page(request: Request, _: None = Depends(require_web)):
+    stats = _engine().store.stats(days=30)
+    return templates.TemplateResponse(request, "panel.html", {"view": panel_view(stats)})
+
+
+WATCH_INTERVALS = [(1, "Saatte bir"), (6, "6 saatte bir"), (24, "Günde bir"), (72, "3 günde bir")]
+
+
+@app.get("/watchlist", response_class=HTMLResponse)
+async def watchlist_page(request: Request, error: str = "", _: None = Depends(require_web)):
+    items = [watch_view(item) for item in _engine().store.list_watch()]
+    return templates.TemplateResponse(
+        request,
+        "watchlist.html",
+        {"items": items, "error": error, "intervals": WATCH_INTERVALS},
+    )
+
+
+@app.post("/watchlist")
+async def watchlist_add(
+    ioc: str = Form(...),
+    interval_hours: int = Form(24),
+    _: None = Depends(require_web),
+):
+    value = ioc.strip()
+    kind = detect_ioc_type(value)
+    if kind == IOCType.UNKNOWN:
+        message = quote("Geçersiz değer. IP, domain, URL, hash veya e-posta girin.")
+        return RedirectResponse(f"/watchlist?error={message}", status_code=303)
+    if interval_hours not in {hours for hours, _text in WATCH_INTERVALS}:
+        interval_hours = 24
+    _engine().store.add_watch(value, kind.value, interval_hours)
+    return RedirectResponse("/watchlist", status_code=303)
+
+
+@app.post("/watchlist/{watch_id}/check")
+async def watchlist_check(watch_id: int, _: None = Depends(require_web)):
+    eng = _engine()
+    item = eng.store.get_watch(watch_id)
+    if item:
+        await check_item(eng, item, datetime.now(timezone.utc))
+    return RedirectResponse("/watchlist", status_code=303)
+
+
+@app.post("/watchlist/{watch_id}/delete")
+async def watchlist_delete(watch_id: int, _: None = Depends(require_web)):
+    _engine().store.delete_watch(watch_id)
+    return RedirectResponse("/watchlist", status_code=303)
 
 
 def main():
