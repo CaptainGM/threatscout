@@ -84,6 +84,8 @@
   <div class="result-actions">
     <a href="/history/{{ report.id }}/pdf" class="btn btn-sm"><i class="fa-solid fa-file-pdf"></i> PDF raporu</a>
     <a href="/history/{{ report.id }}" class="btn ghost btn-sm"><i class="fa-solid fa-link"></i> Kalıcı bağlantı</a>
+    <a href="/api/v1/history/{{ report.id }}/stix" class="btn ghost btn-sm"><i class="fa-solid fa-file-code"></i> STIX 2.1</a>
+    <a href="/api/v1/history/{{ report.id }}/misp" class="btn ghost btn-sm"><i class="fa-solid fa-file-export"></i> MISP</a>
   </div>
   {% endif %}
 

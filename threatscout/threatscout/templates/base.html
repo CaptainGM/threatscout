@@ -35,6 +35,7 @@
         <a href="/settings" {% if "/settings" in request.url.path %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-sliders"></i> Ayarlar</a>
         <a href="/panel" {% if request.url.path == "/panel" %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-chart-column"></i> Panel</a>
         <a href="/watchlist" {% if request.url.path == "/watchlist" %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-eye"></i> İzleme</a>
+        <a href="/mail" {% if request.url.path == "/mail" %}class="active" aria-current="page"{% endif %}><i class="fa-solid fa-envelope-open-text"></i> E-posta</a>
         <a href="/docs" target="_blank" rel="noopener"><i class="fa-solid fa-code"></i> REST API</a>
       </nav>
 

@@ -10,3 +10,6 @@ slowapi>=0.1.9
 python-multipart>=0.0.9
 itsdangerous>=2.1.0
 fpdf2>=2.8.0
+pyspf>=2.0.14
+dkimpy>=1.1.8
+dnspython>=2.6.0

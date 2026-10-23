@@ -483,6 +483,58 @@ class WhoisProvider(BaseProvider):
         return ioc_type in {IOCType.IP, IOCType.DOMAIN, IOCType.URL, IOCType.EMAIL}
 
 
+def _cert_summary(domain: str, certs: list[dict[str, Any]]) -> dict[str, Any]:
+    # crt.sh yüzlerce satır dönebilir; kaydetmek için yalnızca özet tutuyoruz
+    names: set[str] = set()
+    for cert in certs:
+        for name in str(cert.get("name_value", "")).splitlines():
+            name = name.strip().lower().lstrip("*.")
+            if name and (name == domain or name.endswith("." + domain)):
+                names.add(name)
+    dated = [cert for cert in certs if cert.get("not_before")]
+    latest = max(dated, key=lambda cert: cert["not_before"], default=None)
+    return {
+        "cert_count": len(certs),
+        "subdomain_count": len(names),
+        "first_seen": min((cert["not_before"][:10] for cert in dated), default=""),
+        "issuer": str(latest.get("issuer_name", "")) if latest else "",
+        "tags": [],
+    }
+
+
+class CrtShProvider(BaseProvider):
+    # Sertifika şeffaflığı kayıtları (crt.sh). Anahtar gerektirmez ve puanlamaya girmez,
+    # alan adının sertifika geçmişi ve alt alan adları hakkında bağlam verir.
+    name = "crtsh"
+    requires_key = False
+
+    async def analyze_domain(self, domain: str) -> dict[str, Any]:
+        r = await self.client.get(
+            "https://crt.sh/",
+            params={"q": f"%.{domain}", "output": "json"},
+        )
+        r.raise_for_status()
+        return _cert_summary(domain.lower(), r.json())
+
+    async def analyze_ip(self, ip: str) -> dict[str, Any]:
+        return _skipped()
+
+    async def analyze_url(self, url: str) -> dict[str, Any]:
+        host = urlparse(url).hostname
+        return await self.analyze_domain(host) if host else {"error": "bad url"}
+
+    async def analyze_hash(self, file_hash: str) -> dict[str, Any]:
+        return _skipped()
+
+    def normalize(self, raw: dict[str, Any], ioc_type: IOCType) -> dict[str, Any]:
+        if raw.get("error"):
+            return {}
+        return dict(raw)
+
+    def supports(self, ioc_type: IOCType) -> bool:
+        return ioc_type in {IOCType.DOMAIN, IOCType.URL}
+
+
 class NVDClient:
     def __init__(self, api_key: str = "", timeout: float = 15.0) -> None:
         self.api_key = api_key.strip()
@@ -540,4 +592,5 @@ def build_providers(settings) -> list[BaseProvider]:
         URLhausProvider(settings.urlhaus_api_key, t),
         MISPProvider(settings.misp_api_key, t, settings.misp_url),
         WhoisProvider("", t),
+        CrtShProvider("", t),
     ]

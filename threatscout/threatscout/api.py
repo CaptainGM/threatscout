@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,6 +21,8 @@ from threatscout.engine import ThreatScoutEngine
 from threatscout.models import EnrichmentReport, IOCType, detect_ioc_type
 from threatscout.pdf import render_pdf
 from threatscout.report import RISK_COLORS, breakdown_rows, panel_view, provider_row, render_html, result_context
+from threatscout.export import history_csv, misp_event, stix_bundle
+from threatscout.mail import MAX_MAIL_BYTES, Lookup, add_lookups, analyze_mail, lookup_targets
 from threatscout.watch import check_item, watch_loop, watch_view
 
 settings = get_settings()
@@ -41,6 +43,7 @@ PROVIDER_INFO = {
     "urlhaus": ("URLhaus", "Zararlı bağlantı listesi"),
     "misp": ("MISP", "Kendi MISP sunucunuz (isteğe bağlı)"),
     "whois": ("WHOIS / RDAP", "Alan adı ve IP sahiplik bilgisi"),
+    "crtsh": ("crt.sh", "Alan adının sertifika geçmişi ve alt alan adları"),
 }
 
 
@@ -445,6 +448,84 @@ async def watchlist_check(watch_id: int, _: None = Depends(require_web)):
 async def watchlist_delete(watch_id: int, _: None = Depends(require_web)):
     _engine().store.delete_watch(watch_id)
     return RedirectResponse("/watchlist", status_code=303)
+
+
+@app.get("/mail", response_class=HTMLResponse)
+async def mail_page(request: Request, _: None = Depends(require_web)):
+    return templates.TemplateResponse(request, "mail.html", {"report": None, "error": ""})
+
+
+@app.post("/mail", response_class=HTMLResponse)
+@limiter.limit(settings.rate_limit)
+async def mail_analyze(
+    request: Request,
+    raw: str = Form(""),
+    eml: UploadFile | None = File(None),
+    use_dns: bool = Form(False),
+    enrich: bool = Form(False),
+    _: None = Depends(require_web),
+):
+    # Dosya seçildiyse o kullanılır, yoksa yapıştırılan metin
+    if eml and eml.filename:
+        data, source = await eml.read(MAX_MAIL_BYTES + 1), "file"
+    else:
+        data, source = raw.encode("utf-8"), "text"
+    error = ""
+    if not data.strip():
+        error = "Ham başlığı yapıştırın ya da bir .eml dosyası seçin."
+    elif len(data) > MAX_MAIL_BYTES:
+        error = "Dosya çok büyük. En fazla 2 MB analiz edilir."
+    if error:
+        return templates.TemplateResponse(request, "mail.html", {"report": None, "error": error}, status_code=400)
+
+    report = await asyncio.to_thread(analyze_mail, data, source, use_dns)
+    if enrich:
+        eng = _engine()
+        lookups = []
+        for value, kind in lookup_targets(report):
+            found = await eng.enrich(value, ioc_type=kind)
+            lookups.append(Lookup(
+                value=value,
+                kind=kind.value,
+                risk=found.risk_level.value,
+                score=found.threat_score,
+                scan_id=found.id,
+            ))
+        report = add_lookups(report, lookups)
+    return templates.TemplateResponse(request, "mail.html", {"report": report, "error": ""})
+
+
+@app.get("/api/v1/history/{scan_id}/stix")
+async def api_history_stix(scan_id: int, _: None = Depends(require_api)):
+    data = _engine().store.get_scan(scan_id)
+    if not data:
+        raise HTTPException(404, "Kayit yok")
+    return JSONResponse(
+        stix_bundle(data),
+        media_type="application/stix+json;version=2.1",
+        headers={"Content-Disposition": f'attachment; filename="threatscout-{scan_id}-stix.json"'},
+    )
+
+
+@app.get("/api/v1/history/{scan_id}/misp")
+async def api_history_misp(scan_id: int, _: None = Depends(require_api)):
+    data = _engine().store.get_scan(scan_id)
+    if not data:
+        raise HTTPException(404, "Kayit yok")
+    return JSONResponse(
+        misp_event(data),
+        headers={"Content-Disposition": f'attachment; filename="threatscout-{scan_id}-misp.json"'},
+    )
+
+
+@app.get("/api/v1/history.csv")
+async def api_history_csv(q: str = "", limit: int = 500, _: None = Depends(require_api)):
+    rows = _engine().store.list_scans(limit=min(limit, 5000), q=q)
+    return Response(
+        content="﻿" + history_csv(rows),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="threatscout-gecmis.csv"'},
+    )
 
 
 def main():

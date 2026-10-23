@@ -1080,6 +1080,34 @@ tbody tr:hover td { background: rgba(34, 211, 238, 0.045); }
 @keyframes lock-ok { to { color: var(--emerald); filter: drop-shadow(0 0 16px rgba(52, 211, 153, 0.6)); } }
 @keyframes bar { to { width: 100%; } }
 
+/* ===== E-posta analizi ===== */
+.mail-verdict {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem;
+  padding: 1.1rem 1.3rem; margin: 1.2rem 0 1rem; border-radius: var(--radius-sm);
+  background: var(--bg-card); border: 1px solid var(--card-border);
+}
+.mail-verdict-label { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #fff; }
+.mail-verdict.is-bad { border-color: rgba(251, 113, 133, 0.5); box-shadow: 0 0 28px -10px rgba(251, 113, 133, 0.55); }
+.mail-verdict.is-bad .mail-verdict-label { color: var(--rose); }
+.mail-verdict.is-warn { border-color: rgba(251, 191, 36, 0.45); }
+.mail-verdict.is-warn .mail-verdict-label { color: var(--amber); }
+.mail-verdict.is-clean { border-color: rgba(52, 211, 153, 0.45); }
+.mail-verdict.is-clean .mail-verdict-label { color: var(--emerald); }
+.mail-kv { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; margin: 0; font-size: 0.9rem; }
+.mail-kv dt { color: var(--text-dim); }
+.mail-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.finding-list, .plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.finding { display: flex; gap: 0.7rem; align-items: flex-start; font-size: 0.92rem; }
+.finding > div { display: grid; gap: 0.15rem; min-width: 0; }
+.finding strong { color: #fff; font-weight: 600; }
+.plain-list li { overflow-wrap: anywhere; font-size: 0.9rem; }
+.mail-raw {
+  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.78rem; color: var(--text-muted);
+  background: rgba(5, 7, 12, 0.6); border: 1px solid var(--card-border); border-radius: var(--radius-sm);
+  padding: 0.8rem; margin: 0.6rem 0;
+}
+details summary { cursor: pointer; }
+
 /* ===== Küçük ekranlar ===== */
 @media (max-width: 720px) {
   .topbar { padding: 0.75rem 1rem; }

@@ -39,6 +39,7 @@ PROVIDER_TITLES = {
     "urlhaus": "URLhaus",
     "misp": "MISP",
     "whois": "WHOIS / RDAP",
+    "crtsh": "crt.sh",
 }
 
 # Gösterge yarım çemberinin uzunluğu: yarıçap 80 için pi * 80
@@ -128,6 +129,8 @@ def provider_detail(result: ProviderResult) -> str:
         return "Zararlı listesinde" if n.get("listed") else "Listede yok"
     if name == "misp":
         return f"{n.get('event_count', 0)} olay bulundu"
+    if name == "crtsh":
+        return f"{n.get('cert_count', 0)} sertifika, {n.get('subdomain_count', 0)} alt alan adı"
     if name == "whois":
         return "Kayıt: " + str(n.get("name") or n.get("handle") or "bilgi alındı")
     return "Veri alındı"

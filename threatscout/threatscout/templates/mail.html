@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}E-posta analizi — ThreatScout{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <span class="eyebrow"><i class="fa-solid fa-envelope-open-text"></i> E-posta</span>
+  <h1 class="page-title">E-posta analizi</h1>
+  <p class="muted">Şüpheli bir mesajın ham başlığını ya da .eml dosyasını yükleyin. Gönderenin kimlik doğrulaması (SPF, DKIM, DMARC), mesajın geçtiği sunucular, bağlantılar ve ekler kontrol edilir.</p>
+</section>
+
+{% if error %}
+<div class="error" style="margin-bottom: 1rem;">
+  <i class="fa-solid fa-circle-exclamation"></i>
+  <div>{{ error }}</div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-upload"></i> Mesajı analiz et</div>
+  </div>
+  <form method="post" action="/mail" enctype="multipart/form-data" class="mail-form">
+    <div class="field-grow">
+      <label for="mail-raw">Ham başlık</label>
+      <textarea id="mail-raw" name="raw" rows="6" class="mono" placeholder="Gmail'de: üç nokta › Orijinali göster. Oradaki metni buraya yapıştırın."></textarea>
+    </div>
+    <div class="field-grow">
+      <label for="mail-eml">Ya da .eml dosyası</label>
+      <input id="mail-eml" name="eml" type="file" accept=".eml,message/rfc822,text/plain">
+    </div>
+    <label class="check"><input type="checkbox" name="use_dns" checked> DNS kontrollerini yap (SPF, DKIM, DMARC)</label>
+    <p class="muted">Bu kontrol gönderenin alan adının DNS kayıtlarına bakar. Gönderen bu sorguları fark edebilir.</p>
+    <label class="check"><input type="checkbox" name="enrich" checked> Gönderen IP'sini, bağlantıları ve ekleri tehdit kaynaklarında sorgula (en fazla 3 değer)</label>
+    <div class="form-actions">
+      <button type="submit" class="btn"><i class="fa-solid fa-magnifying-glass"></i> Analiz et</button>
+    </div>
+  </form>
+</div>
+
+{% if report %}
+{% set badges = {"bad": "badge-critical", "warn": "badge-medium", "info": "badge-info", "ok": "badge-clean"} %}
+{% set names = {"bad": "Sorun", "warn": "Uyarı", "info": "Bilgi", "ok": "Tamam"} %}
+
+<div class="mail-verdict is-{{ report.verdict_css }}">
+  <span class="mail-verdict-label">{{ report.verdict_label }}</span>
+  <span class="muted">{{ report.verdict_text }}</span>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-user-secret"></i> Gönderen</div>
+    </div>
+    <dl class="mail-kv">
+      <dt>Görünen ad</dt><dd>{{ report.from_name or "—" }}</dd>
+      <dt>Gönderen adresi</dt><dd class="mono">{{ report.sender or "—" }}</dd>
+      <dt>Yanıt adresi</dt><dd class="mono">{{ report.reply_to or "—" }}</dd>
+      <dt>Dönüş adresi</dt><dd class="mono">{{ report.return_path or "—" }}</dd>
+      <dt>Alıcı</dt><dd>{{ report.to or "—" }}</dd>
+      <dt>Konu</dt><dd>{{ report.subject or "—" }}</dd>
+      <dt>Tarih</dt><dd>{{ report.date or "—" }}</dd>
+      <dt>Mesaj kimliği</dt><dd class="mono">{{ report.message_id or "—" }}</dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-route"></i> Kökeni</div>
+    </div>
+    <dl class="mail-kv">
+      <dt>Alıcıya bağlanan</dt>
+      <dd class="mono">{{ report.connecting_ip or "—" }}{% if report.connecting_ptr %} · {{ report.connecting_ptr }}{% endif %}</dd>
+      <dt>İddia edilen kaynak</dt>
+      <dd class="mono">{{ report.origin_ip or "—" }}{% if report.origin_ptr %} · {{ report.origin_ptr }}{% endif %}</dd>
+      <dt>Sunucu adımı</dt><dd>{{ report.hops | length }} (Received satırı)</dd>
+    </dl>
+    <p class="muted">"İddia edilen kaynak" en alttaki Received satırından okunur. Bu satırı gönderen de yazabileceği için sahte olabilir.</p>
+  </div>
+</div>
+
+<div class="section-title"><i class="fa-solid fa-shield-halved"></i> Kimlik doğrulama</div>
+<div class="live-grid">
+  {% for row in report.auth %}
+  <div class="live-card {{ row.css }}">
+    <div class="live-head">
+      <span class="live-name">{{ row.title }}</span>
+      <span class="live-state">{{ row.state }}</span>
+    </div>
+    <div class="live-detail">Alıcı sunucu: {{ row.receiver }}</div>
+    <div class="live-detail">Şimdi kontrol: {{ row.live }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-list-check"></i> Bulgular</div>
+    <span class="muted">{{ report.findings | length }} madde</span>
+  </div>
+  <ul class="finding-list">
+    {% for finding in report.findings %}
+    <li class="finding">
+      <span class="badge {{ badges[finding.level] }}">{{ names[finding.level] }}</span>
+      <div>
+        <strong>{{ finding.title }}</strong>
+        {% if finding.detail %}<span class="muted">{{ finding.detail }}</span>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% if report.lookups %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-radar"></i> Tehdit kaynaklarının sonucu</div>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Değer</th>
+          <th>Tür</th>
+          <th>Risk</th>
+          <th>Puan</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in report.lookups %}
+        <tr>
+          <td class="mono">{{ item.value }}</td>
+          <td><span class="tag">{{ item.kind }}</span></td>
+          <td><span class="badge badge-{{ item.risk | lower }}">{{ item.risk }}</span></td>
+          <td class="mono">{{ item.score | round(1) }}<span class="muted">/100</span></td>
+          <td>{% if item.scan_id %}<a href="/history/{{ item.scan_id }}">Ayrıntı</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-link"></i> Bağlantılar</div>
+    </div>
+    {% if report.link_hosts or report.ip_links %}
+    <ul class="plain-list mono">
+      {% for host in report.link_hosts %}<li>{{ host }}</li>{% endfor %}
+      {% for host in report.ip_links %}<li>{{ host }} <span class="muted">(IP adresi)</span></li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Mesajda bağlantı bulunmadı.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-paperclip"></i> Ekler</div>
+    </div>
+    {% if report.attachments %}
+    <ul class="plain-list">
+      {% for item in report.attachments %}
+      <li>
+        <span class="mono">{{ item.name }}</span>
+        <span class="muted">{{ "%.1f" | format(item.size / 1024) }} KB · SHA-256 {{ item.sha256[:12] }}…</span>
+        {% if item.danger[0] != "ok" %}<span class="badge {{ badges[item.danger[0]] }}">{{ item.danger[1] }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Mesajda ek yok.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <details>
+    <summary class="card-title"><i class="fa-solid fa-code"></i> Alıcı sunucunun başlıkları</summary>
+    <p class="muted">Authentication-Results başlığı alıcı sunucu tarafından eklenir. En üstteki olan kullanılır.</p>
+    <pre class="mail-raw mono">{{ report.receiver_header or "Authentication-Results başlığı yok." }}</pre>
+    <p class="muted">Received zinciri, en üstteki en yeni adımdır.</p>
+    <ol class="mail-raw mono">
+      {% for hop in report.hops %}<li>{{ hop }}</li>{% endfor %}
+    </ol>
+  </details>
+</div>
+{% endif %}
+{% endblock %}
