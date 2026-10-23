@@ -168,6 +168,29 @@ def test_a_signed_mail_from_an_allowed_server_is_clean(signed, spf_dns):
     assert report.verdict == "clean"
 
 
+def test_forged_authentication_results_do_not_make_a_mail_clean(spf_dns):
+    # Gönderen kendi eklediği başlıkta her şeyin geçtiğini yazıyor, ama alıcı sunucu bunu eklememiş
+    spf_dns["banka.com.tr"] = ["v=spf1 ip4:209.85.220.0/24 -all"]
+    dns = FakeDns({"_dmarc.banka.com.tr": ["v=DMARC1; p=reject"]})
+    raw = raw_mail(
+        "Received: from mx.evil.example (mx.evil.example [1.2.3.4]) by mx.ours.example",
+        "Authentication-Results: mx.ours.example; spf=pass; dkim=pass; dmarc=pass",
+    )
+    report = mail.analyze_mail(raw, use_dns=True, dns_client=dns)
+    assert report.live["spf"] == "fail"
+    assert report.verdict == "caution"
+    assert any("uyuşmuyor" in finding.title for finding in report.findings)
+    assert any(finding.title == "DKIM başlığı tutarsız" for finding in report.findings)
+
+
+def test_authentication_results_without_dns_checks_are_not_clean():
+    report = mail.analyze_mail(
+        raw_mail("Authentication-Results: mx.ours.example; spf=pass; dmarc=pass"),
+        use_dns=False,
+    )
+    assert report.verdict == "insufficient"
+
+
 def test_display_name_showing_another_address_is_flagged():
     report = mail.analyze_mail(
         raw_mail(sender='"destek@banka.com.tr" <dolandirici@evil.example>'), use_dns=False

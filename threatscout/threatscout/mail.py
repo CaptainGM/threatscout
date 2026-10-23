@@ -489,7 +489,7 @@ def build_findings(report: MailReport) -> list[Finding]:
         findings.append(Finding("info", "SPF kontrol edilemedi", "DNS sorgusu zaman aşımına uğradı."))
 
     dkim_state = _primary(report, "dkim")
-    if dkim_state == "pass":
+    if dkim_state == "pass" and report.signatures:
         findings.append(Finding("ok", "DKIM imzası geçerli", "Mesaj imzalandığı haliyle değişmemiş."))
     elif dkim_state == "fail" and report.source == "text" and not report.receiver.get("dkim"):
         findings.append(Finding("info", "DKIM doğrulanamadı", "Metin yapıştırıldığında imza bozulabilir. Ham .eml dosyasını yüklerseniz kesin sonuç alırsınız."))
@@ -507,6 +507,20 @@ def build_findings(report: MailReport) -> list[Finding]:
         findings.append(Finding(level, "DMARC geçmedi", f"Gönderen alan adının DMARC kuralı karşılanmadı. Politika: {policy}."))
     elif dmarc_state == "none":
         findings.append(Finding("info", "DMARC kaydı yok", "Gönderen alan adı DMARC kaydı yayımlamamış."))
+
+    # Alıcı sunucu "geçti" diyor ama bugünkü kontrolümüz uymuyorsa başlık sahte olabilir
+    if report.live:
+        for key, title in (("spf", "SPF"), ("dmarc", "DMARC")):
+            if report.receiver.get(key) == "pass" and report.live.get(key) in ("fail", "softfail"):
+                findings.append(Finding(
+                    "warn",
+                    f"Alıcı sunucu ile şimdiki kontrol uyuşmuyor ({title})",
+                    "Alıcı sunucu geçti diyor, ama bugünkü kontrolde geçmedi. Başlık sahte olabilir ya da DNS kaydı sonradan değişmiş olabilir.",
+                ))
+    if report.receiver.get("dkim") == "pass" and not report.signatures:
+        findings.append(Finding("warn", "DKIM başlığı tutarsız", "Alıcı sunucu DKIM imzasını geçerli bulmuş, ama mesajda DKIM imzası yok. Başlık sahte olabilir."))
+    if report.receiver.get("dkim") == "pass" and report.live.get("dkim") == "fail":
+        findings.append(Finding("info", "DKIM anahtarı değişmiş olabilir", "Alıcı sunucu imzayı geçerli bulmuş, bugünkü anahtar kontrolünde geçmedi."))
 
     shown = DISPLAY_ADDRESS.search(report.from_name)
     if shown and shown.group(0).lower() != report.sender:
@@ -545,8 +559,8 @@ def verdict_for(report: MailReport) -> str:
         return "suspicious"
     if "warn" in levels:
         return "caution"
-    # Hiçbir kimlik doğrulama sonucu yoksa "temiz" demek yanıltıcı olur
-    if not any(_primary(report, key) in ("pass", "fail", "softfail") for key in ("spf", "dkim", "dmarc")):
+    # Alıcı sunucunun başlığı sahte olabilir. "Temiz" denmesi için bugünkü kontrolümüzün de sonuç vermesi gerekir.
+    if not any(report.live.get(key) in ("pass", "fail", "softfail") for key in ("spf", "dkim", "dmarc")):
         return "insufficient"
     return "clean"
 
