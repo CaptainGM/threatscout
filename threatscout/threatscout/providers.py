@@ -45,6 +45,9 @@ class BaseProvider(ABC):
     def supports(self, ioc_type: IOCType) -> bool:
         return True
 
+    def _http_error(self, code: int) -> str:
+        return _http_message(code)
+
     async def analyze(self, ioc: str, ioc_type: IOCType) -> ProviderResult:
         if not self.enabled:
             return ProviderResult(provider=self.name, success=False, error=DISABLED_ERROR)
@@ -72,7 +75,7 @@ class BaseProvider(ABC):
             return ProviderResult(
                 provider=self.name,
                 success=False,
-                error=_http_message(exc.response.status_code),
+                error=self._http_error(exc.response.status_code),
             )
         except httpx.TimeoutException:
             return ProviderResult(provider=self.name, success=False, error="Zaman asimi, cevap gelmedi")
@@ -175,6 +178,11 @@ class AbuseIPDBProvider(BaseProvider):
 class ShodanProvider(BaseProvider):
     name = "shodan"
 
+    def _http_error(self, code: int) -> str:
+        if code == 403:
+            return "Shodan bu sorguya izin vermedi (403). Ücretsiz planda bazı sorgular kapalı olabilir."
+        return super()._http_error(code)
+
     async def analyze_ip(self, ip: str) -> dict[str, Any]:
         r = await self.client.get(
             f"https://api.shodan.io/shodan/host/{ip}",
@@ -209,6 +217,7 @@ class ShodanProvider(BaseProvider):
             "open_ports": raw.get("ports", []),
             "cves": [v for v in vulns if str(v).upper().startswith("CVE-")],
             "vulns": bool(vulns),
+            "context_only": ioc_type in (IOCType.DOMAIN, IOCType.URL),
             "country": raw.get("country_name", ""),
             "city": raw.get("city", ""),
             "latitude": raw.get("latitude"),
@@ -253,6 +262,7 @@ class OTXProvider(BaseProvider):
             tags.update(pulse.get("tags", []))
         return {
             "pulse_count": raw.get("pulse_info", {}).get("count", 0),
+            "context_only": ioc_type in (IOCType.DOMAIN, IOCType.URL),
             "tags": sorted(tags),
             "country": raw.get("country_name", ""),
             "city": raw.get("city", ""),

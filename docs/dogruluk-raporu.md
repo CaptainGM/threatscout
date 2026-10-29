@@ -1,70 +1,72 @@
 # ThreatScout doğruluk raporu
 
-Tarih: 22 Ekim 2026
+Son güncelleme: 29 Ekim 2026
 
 ## Ne test edildi?
 
 16 değer, dört gruba ayrıldı:
 
-- **İyi (8):** bilinen büyük siteler ve Google/Cloudflare DNS. Temiz çıkması bekleniyor.
+- **İyi (8):** bilinen büyük siteler ve Google, Cloudflare DNS sunucuları. Temiz çıkması bekleniyor.
 - **Kötü (4):** EICAR test dosyası (iki hash), WannaCry örnek dosyasının hash'i ve bilerek zararlı bırakan test sitesi. Yakalanması bekleniyor.
-- **Şüpheli (1):** Tor çıkış düğümü olan bir IP adresi. Riskli görünmesi bekleniyor, ama saldırı kanıtı yok.
-- **Bilinmeyen (3):** kimsenin bilmediği ya da belgeleme için ayrılmış değerler. Dürüst cevap "yetersiz veri" olmalı, "temiz" değil.
+- **Şüpheli (1):** Tor çıkış düğümü olan bir IP adresi. Riskli görünmesi bekleniyor.
+- **Bilinmeyen (3):** kimsenin bilmediği ya da belgeleme için ayrılmış değerler. Dürüst cevap "yetersiz veri" olmalı.
 
-Test `threatscout/tools/dogruluk_testi.py` ile yapıldı. Sonuçlar geçmişe kaydedilmedi. VirusTotal ücretsiz planı dakikada 4 istek kabul ettiği için değerler arasında 16 saniye bekleniyor.
+Test `threatscout/tools/dogruluk_testi.py` ile yapıldı. Sonuçlar geçmişe kaydedilmez. Ücretsiz VirusTotal planı dakikada 4 istek kabul ettiği için değerler arasında 16 saniye bekleniyor.
 
-İki çalıştırma yapıldı:
+## Çalıştırmalar
 
-1. **22:35 (eski VirusTotal kuralı):** VirusTotal'de tek bir motorun zararlı demesi bile puana yansıyordu.
-2. **22:42 (yeni kural):** `ce4af37` commit'inden sonra. En az 2 motor gerekiyor, her motor 3 puan ekliyor.
+1. **22 Ekim, 22:35:** Eski VirusTotal kuralıyla. Tek bir motorun zararlı demesi puana yansıyordu. google.com düşük çıktı.
+2. **22 Ekim, 22:42:** Yeni VirusTotal kuralıyla (en az 2 motor, her motor 3 puan).
+3. **29 Ekim:** OTX ve URLhaus anahtarları eklendikten sonra. Yeni hatalar çıktı (aşağıda).
+4. **29 Ekim, son çalıştırma:** Üçüncü çalıştırmadaki hatalar düzeltildikten sonra.
+
+Üçüncü çalıştırmada görülen hata şuydu: OTX'in "rapor yok" cevabı ve URLhaus'un "listede yok" cevabı puana "temiz" olarak giriyordu. OTX'in alan adlarındaki rapor sayısı ve Shodan'ın port bilgisi de çok sayıda sitenin ortak sunucusundan geldiği için yanıltıcı puan veriyordu.
+
+Yapılan düzeltmeler:
+
+- "Rapor yok" ve "listede yok" cevapları temiz kanıtı sayılmıyor, puana girmiyor.
+- Alan adlarında ve URL'lerde OTX rapor sayısı ile Shodan port bilgisi puana girmiyor. Sonuç kartında yalnızca bilgi olarak gösteriliyor.
+- Alan adında URLhaus "listede" dese de VirusTotal zararlı bulmadıysa bu sonuç puana girmiyor.
+- Temiz sonuç yalnızca bir veya iki kaynağın puanına dayanıyorsa sonuç kartında uyarı çıkıyor.
 
 ## Sonuçlar
 
-| Değer | Grup | 1. çalıştırma | 2. çalıştırma | Yorum |
+| Değer | Beklenen | 2. çalıştırma (22 Ekim) | 3. çalıştırma (anahtarlar eklendi) | Son çalıştırma |
 |---|---|---|---|---|
-| 8.8.8.8 | iyi | Temiz (0) | Temiz (0) | Doğru |
-| 1.1.1.1 | iyi | Temiz (0) | Temiz (0) | Doğru |
-| google.com | iyi | Düşük (1.1) | Temiz (0) | İlk çalıştırmada tek VirusTotal motoru yanlış alarm verdi. Kural düzeltildi. |
-| github.com | iyi | Temiz (0) | Temiz (0) | Doğru |
-| wikipedia.org | iyi | Temiz (0) | Temiz (0) | Doğru |
-| microsoft.com | iyi | Temiz (0) | Temiz (0) | Doğru |
-| example.com | iyi | Temiz (0) | Temiz (0) | Doğru |
-| https://www.google.com/ | iyi | Temiz (0) | Temiz (0) | Doğru, ama yalnızca 1 kaynak yanıt verdi |
-| EICAR (MD5) | kötü | Kritik (85.3) | Kritik (100) | Doğru |
-| EICAR (SHA256) | kötü | Kritik (85.3) | Kritik (100) | Doğru |
-| WannaCry (SHA256) | kötü | Kritik (90.7) | Kritik (100) | Doğru |
-| malware.wicar.org | kötü | Düşük (20.7) | Orta (57.0) | İlk çalıştırmada düşük kalıyordu. Şimdi orta, ama yalnızca VirusTotal yanıt verdi. |
-| 185.220.101.5 | şüpheli | Orta (45.6) | Orta (54.8) | Makul. Tor düğümleri sık raporlanır. |
-| bilinmeyen-test-alani-93k2.example | bilinmeyen | Yetersiz veri | Yetersiz veri | Dürüst sonuç, ama sebebi farklı: VirusTotal bu değer için 400 hatası döndürdü (büyük ihtimalle `.example` uzantısı yüzünden). |
-| 203.0.113.10 | bilinmeyen | Temiz (0), 3/8 kaynak | Temiz (0), 3/8 kaynak | Zayıf. Az kaynakla "temiz" dedi. Ekranda uyarı çıkıyor. |
-| ornek-kucuk-site-7x2q.com | bilinmeyen | Yetersiz veri (VirusTotal bilmiyordu) | Temiz (0), 1/6 kaynak | Tutarsız. İkinci seferde VirusTotal bir kayıt döndürdü. Ekranda uyarı çıkıyor. |
+| 8.8.8.8 | temiz | Temiz (0) | Temiz (0) | Temiz (0) |
+| 1.1.1.1 | temiz | Temiz (0) | Temiz (0) | Temiz (0) |
+| google.com | temiz | Temiz (0) | Temiz (0) | Temiz (0) |
+| github.com | temiz | Temiz (0) | Düşük (27.7) | Temiz (0) |
+| wikipedia.org | temiz | Temiz (0) | Düşük (23.1) | Temiz (0) |
+| microsoft.com | temiz | Temiz (0) | Temiz (0) | Temiz (0) |
+| example.com | temiz | Temiz (0) | Orta (50.8) | Temiz (0) |
+| https://www.google.com/ | temiz | Temiz (0) | Düşük (14.3) | Temiz (0) |
+| EICAR (MD5) | kötü | Kritik (100) | Yüksek (72.2) | Kritik (100) |
+| EICAR (SHA256) | kötü | Kritik (100) | Yüksek (72.2) | Kritik (100) |
+| WannaCry (SHA256) | kötü | Kritik (100) | Kritik (97.2) | Kritik (97.2) |
+| malware.wicar.org | kötü | Orta (57.0) | Orta (54.0) | Yüksek (70.2) |
+| 185.220.101.5 | şüpheli | Orta (54.8) | Yüksek (68.8) | Yüksek (73.3) |
+| bilinmeyen-test-alani-93k2.example | bilinmeyen | Yetersiz veri | Temiz (0) | Yetersiz veri |
+| 203.0.113.10 | bilinmeyen | Temiz (0), 3/8 kaynak | Temiz (0), 3/8 kaynak | Temiz (0), yalnızca 2 kaynak puanladı |
+| ornek-kucuk-site-7x2q.com | bilinmeyen | Temiz (0), 1/6 kaynak | Temiz (0) | Temiz (0), yalnızca VirusTotal puanladı |
 
 ## Özet
 
-**İyi olan taraflar**
+- Bilinen 8 iyi değerin hepsi temiz çıktı.
+- Bilinen 3 kötü dosya kritik çıktı.
+- Test sitesi (malware.wicar.org) yüksek çıktı. Bu bir test sitesi olduğu için kabul edilebilir bir sonuç.
+- Tor düğümü yüksek çıktı.
+- Bilinmeyen alan adı "yetersiz veri" dedi. Doğru cevap bu.
+- Bilinmeyen IP ve ornek-kucuk-site-7x2q.com "temiz" dedi. Ama bu sonuçlar yalnızca bir veya iki kaynağa dayanıyor. Kartta bu uyarı çıkıyor.
 
-- Bilinen temiz değerlerin hepsi ikinci çalıştırmada temiz çıktı. İlk çalıştırmadaki tek yanlış alarm (google.com) düzeltildi.
-- Bilinen üç kötü hash, iki çalıştırmada da kritik çıktı.
-- Hiçbir kaynağın bilmediği değer için "temiz" denmedi. Bu bilinmeyen değerlerde sonuç "yetersiz veri" oldu.
+## Zayıf taraflar
 
-**Zayıf taraflar**
-
-- **Kaynak sayısı az.** Ücretsiz anahtarlarla çoğu değerde kaynaklardan yalnızca 1 ila 4'ü yanıt veriyor. OTX, GreyNoise, URLhaus ve MISP için anahtar yok. Bu yüzden çoğu sonuç aslında VirusTotal, AbuseIPDB ve WHOIS üzerinden çıkıyor.
-- **Tek kaynaklı "temiz" sonuçlar güvenilir değil.** 203.0.113.10 ve ornek-kucuk-site-7x2q.com bunun örneği. Sonuç kartında artık "Yalnızca N kaynak veri döndürdü" uyarısı çıkıyor.
-- **Shodan 403 hatası veriyor.** Alan adı sorgularının çoğunda bu hata çıktı. IP sorgularında genellikle çalışıyor, ama sonradan yapılan bir taramada 185.220.101.5 için de 403 döndü. Kota ya da ücretli plan sınırı olabilir, kesin nedenini bilmiyorum. Hata mesajı "anahtar geçersiz" gibi okunuyor, bu da yanıltıcı.
-- **Sonuçlar zamanla değişebiliyor.** ornek-kucuk-site-7x2q.com iki çalıştırmada farklı sonuç verdi. Büyük ihtimalle bu, VirusTotal'in o an bildiklerinin bir yansıması. 185.220.101.5 için 22 Ekim'deki taramada 54.8 (orta) çıkmıştı. Sonradan yapılan taramada 68.0 (yüksek) çıktı. Bu sırada Shodan yanıt vermedi. Puanın bir kısmı bundan kaynaklanmış olabilir.
-
-## Bu testin sınırları
-
-- 16 değer ve iki çalıştırma var. Bu bir istatistik ölçümü değil, bir anlık görüntü.
-- Yanlış alarm oranını ölçmek için yeterli temiz örnek yok. Sadece birkaç bilinen site test edildi.
-- Testte kullanılan belgeleme adresi (203.0.113.10) ve `.example` alan adı gerçek dünyada kullanılmaz. Gelecekte bunların yerine gerçek ama kayıtlı değerler kullanılmalı.
-
-## Ne yapılacak?
-
-- OTX ve GreyNoise anahtarları eklenince testi yeniden çalıştırmak. Kaynak sayısı artınca "tek kaynak" uyarısının sıklığı da azalacak.
-- Shodan 403 mesajını "bu sorgu için yetki yok, ücretli plan gerekebilir" diye açıklamak.
-- Test kümesinden belgeleme adreslerini ve `.example` alan adını çıkarmak.
+- **Alan adlarında temiz sonuç yalnızca VirusTotal'e dayanıyor.** URLhaus ve OTX alan adlarında puan vermiyor. Shodan da alan adlarında puan vermiyor. VirusTotal'in kaçırdığı bir site bu sistemde de temiz görünebilir.
+- **Kaynak sayısı az.** Ücretsiz anahtarlarla çoğu değerde kaynakların yalnızca bir kısmı yanıt veriyor. GreyNoise anahtarı henüz yok.
+- **Shodan ücretsiz planda alan adı sorgularına izin vermiyor (403).** Uygulama bunu artık açıkça yazıyor. IP sorgularında da bazen aynı hata çıkıyor.
+- **Puanlar zamanla değişiyor.** 185.220.101.5 için 22 Ekim'de 54.8 (orta) çıkmıştı. Şimdi 73.3 (yüksek) çıkıyor.
+- **Test seti küçük.** 16 değer var. Bu bir istatistik ölçümü değil, bir anlık görüntü.
+- **Belgeleme adresi ve .example alan adı gerçek dünyada kullanılmaz.** 203.0.113.10 ve bilinmeyen-test-alani-93k2.example bu yüzden test setinde. İleride gerçek ama kayıtlı değerlerle değiştirilmeli.
 
 ## Testi tekrar çalıştırmak
 

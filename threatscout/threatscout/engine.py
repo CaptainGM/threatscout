@@ -72,12 +72,16 @@ class RiskScorer:
         "misp": 0.04,
     }
     HASH_WEIGHTS = {"virustotal": 0.50, "urlhaus": 0.25, "otx": 0.15, "misp": 0.10}
-    DOMAIN_WEIGHTS = {"virustotal": 0.30, "urlhaus": 0.20, "otx": 0.15, "misp": 0.15, "shodan": 0.20}
-    URL_WEIGHTS = {"virustotal": 0.30, "urlhaus": 0.30, "otx": 0.10, "misp": 0.10, "shodan": 0.20}
+    # Alan adı ve URL'lerde OTX rapor sayısı ile Shodan port bilgisi puana girmez. Bunlar çok sayıda
+    # site arasında paylaşılan sunucuları anlatıyor (ör. github.com'un IP'sinde SSH açık). Sonuç
+    # kartında yalnızca bilgi olarak gösterilir.
+    DOMAIN_WEIGHTS = {"virustotal": 0.30, "urlhaus": 0.20, "misp": 0.15}
+    URL_WEIGHTS = {"virustotal": 0.30, "urlhaus": 0.30, "misp": 0.10}
     EMAIL_WEIGHTS = {"otx": 0.60, "misp": 0.40}
 
     def enrich_report(self, report: EnrichmentReport) -> EnrichmentReport:
         scores: dict[str, float] = {}
+        vt_clean = False
         for r in report.providers:
             if not r.success or not r.normalized:
                 continue
@@ -88,6 +92,8 @@ class RiskScorer:
                 # sonra her motor 3 puan ekler (27 motor ve üzeri 100 puan eder).
                 malicious = int(n.get("malicious", 0) or 0)
                 scores["virustotal"] = min(100, malicious * 3) if malicious >= 2 else 0
+                # VirusTotal değeri biliyor ve hiçbir motor zararlı dememiş
+                vt_clean = malicious == 0
             elif name == "abuseipdb":
                 scores["abuseipdb"] = float(n.get("abuse_confidence", 0))
             elif name == "shodan":
@@ -102,8 +108,10 @@ class RiskScorer:
                     s += 20
                 scores["shodan"] = min(100, s)
             elif name == "otx":
+                # Rapor sayısı 0 ise OTX "bilmiyorum" diyor, bu temizlik kanıtı değildir
                 pc = n.get("pulse_count", 0)
-                scores["otx"] = min(100, pc * 15) if pc else 0
+                if pc:
+                    scores["otx"] = min(100, pc * 15)
             elif name == "greynoise":
                 cls = str(n.get("classification", "")).lower()
                 if cls == "malicious":
@@ -115,10 +123,18 @@ class RiskScorer:
                 else:
                     scores["greynoise"] = 0.0
             elif name == "urlhaus":
-                scores["urlhaus"] = 90.0 if n.get("listed") else 0.0
+                # Listede değilse bu temizlik kanıtı değildir, puana katılmaz
+                if n.get("listed"):
+                    scores["urlhaus"] = 90.0
             elif name == "misp":
                 count = n.get("event_count") or n.get("attribute_count") or 0
-                scores["misp"] = min(100, int(count) * 20) if count else 0
+                if count:
+                    scores["misp"] = min(100, int(count) * 20)
+
+        # Büyük sitelerde (ör. github.com) URLhaus alan adı listesi yanlış alarm verebiliyor.
+        # VirusTotal alan adını biliyor ve zararlı bulmadıysa bu sonuç puana girmez.
+        if report.ioc_type == IOCType.DOMAIN and vt_clean:
+            scores.pop("urlhaus", None)
 
         weights = {
             IOCType.IP: self.IP_WEIGHTS,

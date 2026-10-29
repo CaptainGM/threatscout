@@ -120,9 +120,11 @@ def provider_detail(result: ProviderResult) -> str:
         return f"Kötüye kullanım skoru %{n.get('abuse_confidence', 0)} ({n.get('total_reports', 0)} şikayet)"
     if name == "shodan":
         ports = n.get("open_ports") or []
-        return "Açık portlar: " + (", ".join(str(p) for p in ports[:8]) if ports else "yok")
+        note = ", puana katılmaz" if n.get("context_only") else ""
+        return "Açık portlar: " + (", ".join(str(p) for p in ports[:8]) if ports else "yok") + note
     if name == "otx":
-        return f"{n.get('pulse_count', 0)} tehdit raporunda geçiyor"
+        note = ", puana katılmaz" if n.get("context_only") else ""
+        return f"{n.get('pulse_count', 0)} tehdit raporunda geçiyor{note}"
     if name == "greynoise":
         return f"Sınıf: {n.get('classification', 'bilinmiyor')}"
     if name == "urlhaus":
@@ -240,7 +242,7 @@ def result_context(report: EnrichmentReport, error: str | None = None) -> dict:
         "risk_color": RISK_COLORS.get(report.risk_level, "#6b7280"),
         "breakdown_rows": breakdown_rows(report),
         "rows": rows,
-        "coverage": coverage(rows),
+        "coverage": {**coverage(rows), "scoring": len(report.risk_breakdown.weights_applied)},
         "gauge": gauge(report),
         "graph": graph(report),
         "map": map_point(report),

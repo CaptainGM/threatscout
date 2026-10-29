@@ -67,8 +67,8 @@
     <i class="fa-solid fa-circle-info" style="color: {{ theme_color }}; font-size: 1.1rem; margin-top: 0.1rem;"></i>
     <div>
       <strong>Sonuç:</strong> {{ status_desc }}
-      {% if r_level == 'clean' and coverage.answered <= 3 %}
-      <div class="panel-note">Yalnızca {{ coverage.answered }} kaynak veri döndürdü. Temiz görünmesi tam bir güvence anlamına gelmez.</div>
+      {% if r_level == 'clean' and coverage.scoring <= 2 %}
+      <div class="panel-note">Bu temiz sonuç yalnızca {{ coverage.scoring }} kaynağın puanına dayanıyor. Tam bir güvence anlamına gelmez.</div>
       {% endif %}
     </div>
   </div>
